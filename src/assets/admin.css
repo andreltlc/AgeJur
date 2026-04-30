@@ -1,0 +1,177 @@
+/* Admin-specific styles (complementa styles.css) */
+
+.admin-header {
+    background: var(--primary);
+    color: white;
+    padding: 1rem 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.admin-header-left {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-size: 1.5rem;
+}
+
+.admin-header-left > div {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+}
+
+.admin-header-left strong { font-size: 1rem; }
+
+.admin-header-actions {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.admin-badge {
+    font-size: 0.7rem;
+    background: var(--secondary);
+    color: white;
+    padding: 0.15rem 0.5rem;
+    border-radius: 4px;
+    font-weight: 700;
+    width: fit-content;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.admin-main {
+    max-width: 700px;
+    margin: 1.75rem auto;
+    padding: 0 1.25rem;
+}
+
+.admin-card {
+    background: white;
+    border-radius: 12px;
+    box-shadow: var(--shadow);
+    border: 1px solid var(--border);
+    overflow: hidden;
+}
+
+.admin-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.1rem 1.5rem;
+    border-bottom: 1px solid var(--border);
+}
+
+.admin-card-header h2 {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--primary);
+}
+
+.token-gerado {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    background: #e8f5e9;
+    border-bottom: 1px solid #c8e6c9;
+    padding: 1rem 1.5rem;
+}
+
+.token-gerado p {
+    font-size: 0.85rem;
+    color: #2e7d32;
+    font-weight: 500;
+}
+
+.token-display {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.token-valor {
+    font-size: 1.8rem;
+    font-weight: 700;
+    font-family: 'Courier New', monospace;
+    color: var(--primary);
+    letter-spacing: 4px;
+    background: white;
+    padding: 0.4rem 1rem;
+    border-radius: 8px;
+    border: 2px solid #c8e6c9;
+}
+
+.tokens-section-label {
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--text-light);
+    padding: 0.75rem 1.5rem 0.3rem;
+    border-top: 1px solid var(--border);
+}
+
+.tokens-section-label:first-child { border-top: none; }
+
+.token-card {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1.5rem;
+    border-bottom: 1px solid var(--border);
+    transition: background 0.15s;
+}
+
+.token-card:hover { background: var(--bg); }
+.token-card:last-child { border-bottom: none; }
+.token-card.usado { opacity: 0.55; }
+
+.token-code {
+    font-family: 'Courier New', monospace;
+    font-size: 1.05rem;
+    font-weight: 700;
+    letter-spacing: 2px;
+    color: var(--primary);
+    min-width: 105px;
+    flex-shrink: 0;
+}
+
+.token-code.riscado {
+    text-decoration: line-through;
+    color: var(--text-light);
+}
+
+.token-info {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.token-meta {
+    font-size: 0.78rem;
+    color: var(--text-light);
+}
+
+.tag-usado { background: #e8f5e9; color: var(--success); }
+.tag-disponivel { background: #fff3e0; color: #e67e22; }
+
+.btn-outline-dark {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text);
+}
+.btn-outline-dark:hover { background: var(--bg); }
+
+.admin-btn-outline {
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    color: white;
+}
+.admin-btn-outline:hover { background: rgba(255, 255, 255, 0.1); }
