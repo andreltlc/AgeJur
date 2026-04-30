@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Gerar ícone PNG</title>
+    <style>
+        body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; padding: 2rem; gap: 1rem; }
+        canvas { border-radius: 36px; box-shadow: 0 4px 20px rgba(0,0,0,0.2); }
+        a { padding: 0.75rem 1.5rem; background: #1a3a5c; color: white; border-radius: 8px; text-decoration: none; font-weight: 600; }
+        p { color: #666; font-size: 0.9rem; text-align: center; max-width: 360px; }
+    </style>
+</head>
+<body>
+    <h2>Gerador de ícone — Agenda Jurídica</h2>
+    <canvas id="c" width="512" height="512"></canvas>
+    <a id="dl-512" download="icon-512.png">⬇️ Baixar icon-512.png</a>
+    <a id="dl-192" download="icon-192.png">⬇️ Baixar icon-192.png</a>
+    <p>Salve os dois arquivos dentro da pasta <strong>icons/</strong> do projeto e depois pode fechar esta página.</p>
+
+    <script>
+    const canvas = document.getElementById('c');
+    const ctx    = canvas.getContext('2d');
+    const S      = 512;
+
+    /* Fundo arredondado */
+    ctx.beginPath();
+    ctx.moveTo(100, 0);
+    ctx.lineTo(S - 100, 0);
+    ctx.quadraticCurveTo(S, 0, S, 100);
+    ctx.lineTo(S, S - 100);
+    ctx.quadraticCurveTo(S, S, S - 100, S);
+    ctx.lineTo(100, S);
+    ctx.quadraticCurveTo(0, S, 0, S - 100);
+    ctx.lineTo(0, 100);
+    ctx.quadraticCurveTo(0, 0, 100, 0);
+    ctx.closePath();
+    ctx.fillStyle = '#1a3a5c';
+    ctx.fill();
+
+    ctx.strokeStyle = '#c9a84c';
+    ctx.fillStyle   = '#c9a84c';
+    ctx.lineCap     = 'round';
+    ctx.lineJoin    = 'round';
+
+    /* Haste central */
+    ctx.fillRect(244, 108, 24, 268);
+
+    /* Barra horizontal */
+    ctx.fillRect(116, 108, 280, 24);
+
+    /* Braço esquerdo */
+    ctx.lineWidth = 20;
+    ctx.beginPath();
+    ctx.moveTo(136, 120);
+    ctx.lineTo(136, 220);
+    ctx.stroke();
+
+    /* Prato esquerdo */
+    ctx.lineWidth = 18;
+    ctx.beginPath();
+    ctx.arc(136, 220, 52, Math.PI, 0);
+    ctx.stroke();
+
+    /* Braço direito */
+    ctx.lineWidth = 20;
+    ctx.beginPath();
+    ctx.moveTo(376, 120);
+    ctx.lineTo(376, 220);
+    ctx.stroke();
+
+    /* Prato direito */
+    ctx.lineWidth = 18;
+    ctx.beginPath();
+    ctx.arc(376, 220, 52, Math.PI, 0);
+    ctx.stroke();
+
+    /* Base */
+    ctx.fillRect(192, 372, 128, 22);
+    ctx.fillRect(160, 390, 192, 22);
+
+    /* Gera links de download */
+    document.getElementById('dl-512').href = canvas.toDataURL('image/png');
+
+    /* Redimensiona para 192x192 */
+    const small = document.createElement('canvas');
+    small.width  = 192;
+    small.height = 192;
+    small.getContext('2d').drawImage(canvas, 0, 0, 192, 192);
+    document.getElementById('dl-192').href = small.toDataURL('image/png');
+    </script>
+</body>
+</html>

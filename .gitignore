@@ -1,0 +1,15 @@
+# Firebase
+.firebase/
+.firebaserc.local
+
+# Node
+node_modules/
+
+# Sistema
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Variáveis de ambiente
+.env
+.env.local

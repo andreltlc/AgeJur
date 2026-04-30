@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Fundo arredondado -->
+  <rect width="512" height="512" rx="100" fill="#1a3a5c"/>
+
+  <!-- Haste central -->
+  <rect x="244" y="108" width="24" height="268" rx="10" fill="#c9a84c"/>
+
+  <!-- Barra horizontal -->
+  <rect x="116" y="108" width="280" height="24" rx="12" fill="#c9a84c"/>
+
+  <!-- Braço esquerdo -->
+  <rect x="128" y="120" width="16" height="96" rx="8" fill="#c9a84c"/>
+  <!-- Prato esquerdo -->
+  <path d="M92 216 Q136 250 180 216" stroke="#c9a84c" stroke-width="16"
+        fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <!-- Braço direito -->
+  <rect x="368" y="120" width="16" height="96" rx="8" fill="#c9a84c"/>
+  <!-- Prato direito -->
+  <path d="M332 216 Q376 250 420 216" stroke="#c9a84c" stroke-width="16"
+        fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <!-- Base -->
+  <rect x="192" y="372" width="128" height="22" rx="11" fill="#c9a84c"/>
+  <rect x="160" y="390" width="192" height="22" rx="11" fill="#c9a84c"/>
+</svg>

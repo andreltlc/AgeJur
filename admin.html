@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agenda Jurídica — Administrador</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#1a3a5c">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="Agenda Jur.">
+    <link rel="apple-touch-icon" href="icons/icon-192.png">
+    <link rel="stylesheet" href="css/admin.css">
+</head>
+<body>
+
+<header class="admin-header">
+    <div class="admin-header-left">
+        <span>⚖️</span>
+        <div>
+            <strong>Agenda Jurídica</strong>
+            <span class="admin-badge">Admin</span>
+        </div>
+    </div>
+    <div class="admin-header-actions">
+        <a href="index.html" class="btn btn-outline btn-sm">← Voltar ao app</a>
+        <button id="btn-logout" class="btn btn-danger btn-sm">Sair</button>
+    </div>
+</header>
+
+<div class="admin-main">
+    <div class="admin-card">
+
+        <!-- Cabeçalho da seção -->
+        <div class="admin-card-header">
+            <h2>🔑 Códigos de acesso</h2>
+            <button class="btn btn-primary" id="btn-gerar-token">+ Gerar código</button>
+        </div>
+
+        <!-- Código gerado (aparece após geração) -->
+        <div id="token-gerado" class="token-gerado hidden">
+            <p>Código gerado com sucesso! Compartilhe com o cliente:</p>
+            <div class="token-display">
+                <span class="token-valor" id="token-valor-exibido"></span>
+                <button class="btn btn-outline-dark btn-sm" id="btn-copiar">📋 Copiar</button>
+            </div>
+        </div>
+
+        <!-- Lista de tokens -->
+        <div id="lista-tokens"></div>
+
+    </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore-compat.js"></script>
+<script src="js/firebase-config.js"></script>
+<script src="js/admin.js"></script>
+</body>
+</html>
