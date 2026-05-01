@@ -17,6 +17,16 @@ const routes = [
     component: () => import('../views/AdminView.vue'),
     meta: { requiresAuth: true },
   },
+  {
+    // handler customizado para ações de e-mail do Firebase (reset de senha, etc.)
+    path: '/auth/action',
+    component: () => import('../views/AuthActionView.vue'),
+  },
+  {
+    // fallback: Firebase pode enviar o link para /__/auth/action no domínio do Hosting
+    path: '/__/auth/action',
+    component: () => import('../views/AuthActionView.vue'),
+  },
 ]
 
 const router = createRouter({
