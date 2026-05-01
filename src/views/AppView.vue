@@ -45,7 +45,10 @@ async function salvarApelido() {
   try {
     const snap = await getDocs(query(collection(db, 'users'), where('apelido', '==', apelido)))
     if (!snap.empty) { mApelido.erro = 'Este apelido já está em uso. Escolha outro.'; return }
-    await setDoc(doc(db, 'users', currentUser.value.uid), { apelido }, { merge: true })
+    await setDoc(doc(db, 'users', currentUser.value.uid), {
+      apelido,
+      email: currentUser.value.email,
+    }, { merge: true })
     mApelido.open = false
   } catch (e) {
     mApelido.erro = 'Erro ao salvar. Tente novamente.'
