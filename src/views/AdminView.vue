@@ -1,51 +1,152 @@
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { onAuthStateChanged, signOut } from 'firebase/auth'
 import {
-  collection, doc, getDoc, addDoc, deleteDoc,
-  query, orderBy, onSnapshot, serverTimestamp,
+  onAuthStateChanged, signOut, sendPasswordResetEmail,
+} from 'firebase/auth'
+import {
+  collection, doc, getDoc, addDoc, deleteDoc, setDoc,
+  query, orderBy, onSnapshot, where, getDocs, serverTimestamp,
 } from 'firebase/firestore'
 import { auth, db } from '../firebase'
 import '../assets/admin.css'
 
 const router = useRouter()
 const currentUser = ref(null)
-const tokens = ref([])
-let unsub = null
+const abaAtiva = ref('usuarios')
+
+/* ── AUTH GUARD ── */
+let unsubTokens = null
+let unsubUsers = null
 
 onAuthStateChanged(auth, async user => {
   if (!user) { router.replace('/login'); return }
   try {
     const configDoc = await getDoc(doc(db, 'config', 'admin'))
     if (!configDoc.exists() || configDoc.data().uid !== user.uid) {
-      router.replace('/')
-      return
+      router.replace('/'); return
     }
     currentUser.value = user
     iniciarListaTokens()
+    iniciarListaUsuarios()
   } catch {
     router.replace('/')
   }
 })
 
-function iniciarListaTokens() {
-  unsub = onSnapshot(
-    query(collection(db, 'tokens'), orderBy('createdAt', 'desc')),
-    snap => { tokens.value = snap.docs.map(d => ({ id: d.id, ...d.data() })) },
-  )
-}
-
-onUnmounted(() => { if (unsub) unsub() })
+onUnmounted(() => {
+  if (unsubTokens) unsubTokens()
+  if (unsubUsers) unsubUsers()
+})
 
 function logout() {
   signOut(auth).then(() => router.replace('/login'))
 }
 
-/* ── GERAÇÃO DE TOKEN ── */
+/* ══════════════════════════════════════
+   ABA USUÁRIOS
+══════════════════════════════════════ */
+const users = ref([])
+const userSearch = ref('')
+
+function iniciarListaUsuarios() {
+  unsubUsers = onSnapshot(
+    collection(db, 'users'),
+    snap => {
+      users.value = snap.docs
+        .map(d => ({ id: d.id, ...d.data() }))
+        .sort((a, b) => {
+          const ta = a.createdAt?.toMillis?.() ?? 0
+          const tb = b.createdAt?.toMillis?.() ?? 0
+          return tb - ta
+        })
+    },
+    err => { console.error('Admin/users:', err.message) },
+  )
+}
+
+const usuariosFiltrados = computed(() => {
+  const q = userSearch.value.trim().toLowerCase()
+  if (!q) return users.value
+  return users.value.filter(u =>
+    u.nome?.toLowerCase().includes(q) ||
+    u.apelido?.toLowerCase().includes(q) ||
+    u.email?.toLowerCase().includes(q),
+  )
+})
+
+/* Reset de senha */
+const resetStatus = ref({}) // uid → 'sending' | 'sent' | 'error'
+
+async function enviarResetSenha(user) {
+  resetStatus.value[user.id] = 'sending'
+  try {
+    await sendPasswordResetEmail(auth, user.email)
+    resetStatus.value[user.id] = 'sent'
+    setTimeout(() => { delete resetStatus.value[user.id] }, 4000)
+  } catch {
+    resetStatus.value[user.id] = 'error'
+    setTimeout(() => { delete resetStatus.value[user.id] }, 4000)
+  }
+}
+
+/* Editar usuário */
+const mEditUser = ref({ open: false, uid: null, nome: '', apelido: '', email: '', erro: '', salvando: false })
+
+function abrirEditUser(user) {
+  mEditUser.value = {
+    open: true, uid: user.id,
+    nome: user.nome || '',
+    apelido: user.apelido || '',
+    email: user.email || '',
+    erro: '', salvando: false,
+  }
+}
+
+function onApelidoEditInput(e) {
+  mEditUser.value.apelido = e.target.value.toLowerCase().replace(/^@/, '').replace(/[^a-z0-9_]/g, '')
+}
+
+async function salvarEditUser() {
+  mEditUser.value.erro = ''
+  const { uid, nome, apelido } = mEditUser.value
+  if (!nome.trim()) { mEditUser.value.erro = 'Informe o nome.'; return }
+  if (apelido.length < 3) { mEditUser.value.erro = 'Apelido deve ter pelo menos 3 caracteres.'; return }
+
+  mEditUser.value.salvando = true
+  try {
+    const snap = await getDocs(query(collection(db, 'users'), where('apelido', '==', apelido)))
+    const conflito = snap.docs.find(d => d.id !== uid)
+    if (conflito) { mEditUser.value.erro = 'Este apelido já está em uso.'; return }
+
+    const emailVal = mEditUser.value.email.trim()
+    await setDoc(doc(db, 'users', uid), {
+      nome: nome.trim(),
+      apelido,
+      ...(emailVal && { email: emailVal }),
+    }, { merge: true })
+    mEditUser.value.open = false
+  } catch (e) {
+    mEditUser.value.erro = 'Erro ao salvar: ' + e.message
+  } finally {
+    mEditUser.value.salvando = false
+  }
+}
+
+/* ══════════════════════════════════════
+   ABA TOKENS
+══════════════════════════════════════ */
+const tokens = ref([])
 const tokenGerado = ref(null)
 const gerandoToken = ref(false)
 const btnCopiarTxt = ref('📋 Copiar')
+
+function iniciarListaTokens() {
+  unsubTokens = onSnapshot(
+    query(collection(db, 'tokens'), orderBy('createdAt', 'desc')),
+    snap => { tokens.value = snap.docs.map(d => ({ id: d.id, ...d.data() })) },
+  )
+}
 
 function gerarCodigo() {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
@@ -62,8 +163,7 @@ async function gerarToken() {
   try {
     const token = gerarCodigo()
     await addDoc(collection(db, 'tokens'), {
-      token,
-      used: false, usedBy: null, usedAt: null,
+      token, used: false, usedBy: null, usedAt: null,
       createdBy: currentUser.value.uid,
       createdAt: serverTimestamp(),
     })
@@ -85,14 +185,14 @@ function copiarToken() {
 }
 
 async function revogarToken(id) {
-  if (!confirm('Revogar este código? Quem o tiver recebido não poderá mais usá-lo.')) return
-  try { await deleteDoc(doc(db, 'tokens', id)) } catch (e) { alert('Erro ao revogar: ' + e.message) }
+  if (!confirm('Revogar este código?')) return
+  try { await deleteDoc(doc(db, 'tokens', id)) } catch (e) { alert('Erro: ' + e.message) }
 }
 
-/* ── UTILITÁRIOS ── */
-const disponiveis = tokens => tokens.filter(t => !t.used)
-const utilizados  = tokens => tokens.filter(t =>  t.used)
+const disponiveis = t => t.filter(x => !x.used)
+const utilizados  = t => t.filter(x =>  x.used)
 
+/* ── UTILITÁRIOS ── */
 function formatarData(timestamp) {
   if (!timestamp?.toDate) return '—'
   const d = timestamp.toDate()
@@ -118,7 +218,65 @@ function formatarData(timestamp) {
     </header>
 
     <div class="admin-main">
-      <div class="admin-card">
+
+      <!-- Abas -->
+      <div class="admin-tabs">
+        <button :class="['admin-tab', abaAtiva === 'usuarios' && 'active']" @click="abaAtiva = 'usuarios'">
+          👤 Usuários <span class="admin-tab-count">{{ users.length }}</span>
+        </button>
+        <button :class="['admin-tab', abaAtiva === 'tokens' && 'active']" @click="abaAtiva = 'tokens'">
+          🔑 Tokens <span class="admin-tab-count">{{ disponiveis(tokens).length }}</span>
+        </button>
+      </div>
+
+      <!-- ══ ABA USUÁRIOS ══ -->
+      <div v-if="abaAtiva === 'usuarios'" class="admin-card">
+
+        <div class="admin-card-header">
+          <h2>👤 Usuários cadastrados</h2>
+        </div>
+
+        <div class="admin-search-row">
+          <input v-model="userSearch" type="text" placeholder="Buscar por nome, @apelido ou e-mail…" class="admin-search">
+        </div>
+
+        <div v-if="usuariosFiltrados.length === 0" class="empty-state">
+          <div class="icon">👤</div>
+          <p>Nenhum usuário encontrado.</p>
+        </div>
+
+        <div v-for="u in usuariosFiltrados" :key="u.id" class="user-card">
+          <div class="user-info">
+            <div class="user-nome">{{ u.nome || '(sem nome)' }}</div>
+            <div class="user-meta">
+              <span class="user-apelido">@{{ u.apelido || '—' }}</span>
+              <span class="user-email">{{ u.email }}</span>
+              <span class="user-data">desde {{ formatarData(u.createdAt) }}</span>
+            </div>
+          </div>
+          <div class="user-actions">
+            <button class="btn btn-sm btn-outline-dark" @click="abrirEditUser(u)" title="Editar dados">
+              ✏️ Editar
+            </button>
+            <button
+              class="btn btn-sm"
+              :class="resetStatus[u.id] === 'sent' ? 'btn-success' : resetStatus[u.id] === 'error' ? 'btn-danger' : 'btn-outline-dark'"
+              :disabled="resetStatus[u.id] === 'sending'"
+              @click="enviarResetSenha(u)"
+              title="Enviar e-mail de redefinição de senha"
+            >
+              <template v-if="!resetStatus[u.id]">🔒 Reset senha</template>
+              <template v-else-if="resetStatus[u.id] === 'sending'">Enviando…</template>
+              <template v-else-if="resetStatus[u.id] === 'sent'">✓ E-mail enviado</template>
+              <template v-else>✗ Erro</template>
+            </button>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- ══ ABA TOKENS ══ -->
+      <div v-if="abaAtiva === 'tokens'" class="admin-card">
 
         <div class="admin-card-header">
           <h2>🔑 Códigos de acesso</h2>
@@ -127,16 +285,14 @@ function formatarData(timestamp) {
           </button>
         </div>
 
-        <!-- Token gerado -->
         <div v-if="tokenGerado" class="token-gerado">
-          <p>Código gerado com sucesso! Compartilhe com o cliente:</p>
+          <p>Código gerado! Compartilhe com o usuário:</p>
           <div class="token-display">
             <span class="token-valor">{{ tokenGerado }}</span>
             <button class="btn btn-outline-dark btn-sm" @click="copiarToken">{{ btnCopiarTxt }}</button>
           </div>
         </div>
 
-        <!-- Lista de tokens -->
         <template v-if="tokens.length === 0">
           <div class="empty-state">
             <div class="icon">🔑</div>
@@ -171,5 +327,41 @@ function formatarData(timestamp) {
 
       </div>
     </div>
+
+    <!-- ══ MODAL EDITAR USUÁRIO ══ -->
+    <div v-if="mEditUser.open" class="modal-overlay open" @click.self="mEditUser.open = false">
+      <div class="modal">
+        <div class="modal-header">
+          <h3>✏️ Editar usuário</h3>
+          <button class="modal-close" @click="mEditUser.open = false">✕</button>
+        </div>
+        <div class="modal-body">
+          <div class="form-group">
+            <label>Nome completo</label>
+            <input type="text" v-model="mEditUser.nome" placeholder="Nome do usuário">
+          </div>
+          <div class="form-group">
+            <label>Apelido</label>
+            <div class="apelido-input-wrap">
+              <span class="apelido-prefix">@</span>
+              <input type="text" :value="mEditUser.apelido" @input="onApelidoEditInput"
+                     placeholder="apelido" autocomplete="off" spellcheck="false" maxlength="20">
+            </div>
+          </div>
+          <div class="form-group">
+            <label>E-mail de login</label>
+            <input type="email" v-model="mEditUser.email" placeholder="email@exemplo.com">
+          </div>
+          <div v-if="mEditUser.erro" class="auth-erro">{{ mEditUser.erro }}</div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-secondary" @click="mEditUser.open = false">Cancelar</button>
+          <button class="btn btn-primary" @click="salvarEditUser" :disabled="mEditUser.salvando">
+            {{ mEditUser.salvando ? 'Salvando…' : 'Salvar' }}
+          </button>
+        </div>
+      </div>
+    </div>
+
   </div>
 </template>

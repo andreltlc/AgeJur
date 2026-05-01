@@ -54,7 +54,8 @@ src/
 
 ### Admin (`/admin`)
 - Acesso restrito por UID fixo no Firestore em `config/admin`
-- Tokens `XXXX-XXXX` reservados para uso futuro (SaaS/planos pagos)
+- **Aba Usuários**: lista em tempo real, busca por nome/@apelido/e-mail, editar nome e @apelido, reset de senha via `sendPasswordResetEmail` (client SDK não permite alterar senha de outro user diretamente)
+- **Aba Tokens**: gera/revoga tokens `XXXX-XXXX` para uso futuro (SaaS/planos pagos)
 
 ## Padrão dos composables (usePrazos / useAudiencias)
 ```js
