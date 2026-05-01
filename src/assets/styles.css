@@ -336,6 +336,91 @@ header .subtitle {
 }
 .protocol-badge:hover { background: #c5cae9; }
 
+/* ─ Input com prefixo @apelido ─ */
+.apelido-input-wrap {
+    display: flex;
+    align-items: center;
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    transition: border-color 0.2s;
+}
+.apelido-input-wrap:focus-within { border-color: var(--primary); }
+
+.apelido-prefix {
+    padding: 0.6rem 0.5rem 0.6rem 0.85rem;
+    font-size: 0.875rem;
+    color: var(--text-light);
+    background: var(--bg);
+    border-right: 1px solid var(--border);
+    font-weight: 600;
+}
+
+.apelido-input-wrap input {
+    border: none;
+    border-radius: 0;
+    flex: 1;
+}
+.apelido-input-wrap input:focus { border-color: transparent; }
+
+/* ─ Compartilhamento ─ */
+.tag-shared { background: #e8eaf6; color: #3949ab; }
+.tag-editor { background: #e8f5e9; color: #2e7d32; }
+.tag-viewer { background: #fff8e1; color: #f57f17; }
+
+.share-list { margin-bottom: 0.75rem; }
+
+.share-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--border);
+}
+.share-item:last-child { border-bottom: none; }
+
+.share-apelido {
+    flex: 1;
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+.share-search-row {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.share-result {
+    background: var(--bg);
+    border-radius: 8px;
+    padding: 0.75rem;
+    margin-top: 0.5rem;
+    border: 1px solid var(--border);
+}
+
+.share-result-info {
+    display: flex;
+    gap: 0.5rem;
+    align-items: baseline;
+    margin-bottom: 0.5rem;
+    font-size: 0.875rem;
+}
+.share-result-info span { color: var(--text-light); font-size: 0.8rem; }
+
+.share-roles { display: flex; gap: 1.25rem; }
+
+.role-option {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.875rem;
+    cursor: pointer;
+    font-weight: normal;
+    margin-bottom: 0;
+}
+.role-option input { width: auto; cursor: pointer; }
+
 /* =============================================
    RÓTULOS DE SEÇÃO
    ============================================= */

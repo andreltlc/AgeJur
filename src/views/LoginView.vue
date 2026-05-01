@@ -9,7 +9,7 @@ import {
 } from 'firebase/auth'
 import {
   collection, query, where, getDocs,
-  doc, updateDoc, setDoc, serverTimestamp,
+  doc, setDoc, serverTimestamp,
 } from 'firebase/firestore'
 import { auth, db } from '../firebase'
 
@@ -48,67 +48,40 @@ async function fazerLogin() {
   }
 }
 
-/* ── TOKEN ── */
-const tokenInput   = ref('')
-const tokenErro    = ref('')
-const tokenLoading = ref(false)
-const tokenDocId   = ref('')
-
-function onTokenInput(e) {
-  let v = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '')
-  if (v.length > 4) v = v.slice(0, 4) + '-' + v.slice(4, 8)
-  tokenInput.value = v
-}
-
-async function validarToken() {
-  tokenErro.value = ''
-  if (tokenInput.value.length < 9) {
-    tokenErro.value = 'Código inválido. Formato esperado: XXXX-XXXX'
-    return
-  }
-  tokenLoading.value = true
-  try {
-    const snap = await getDocs(
-      query(
-        collection(db, 'tokens'),
-        where('token', '==', tokenInput.value),
-        where('used', '==', false),
-      ),
-    )
-    if (snap.empty) {
-      tokenErro.value = 'Código inválido ou já utilizado.'
-    } else {
-      tokenDocId.value = snap.docs[0].id
-      view.value = 'registro'
-    }
-  } catch {
-    tokenErro.value = 'Erro ao verificar. Tente novamente.'
-  } finally {
-    tokenLoading.value = false
-  }
-}
-
 /* ── REGISTRO ── */
+const regNome    = ref('')
+const regApelido = ref('')
 const regEmail   = ref('')
 const regSenha   = ref('')
 const regSenha2  = ref('')
 const regErro    = ref('')
 const regLoading = ref(false)
 
+function onApelidoInput(e) {
+  regApelido.value = e.target.value.toLowerCase().replace(/^@/, '').replace(/[^a-z0-9_]/g, '')
+}
+
 async function criarConta() {
   regErro.value = ''
-  if (!regEmail.value || !regSenha.value) { regErro.value = 'Preencha todos os campos.'; return }
-  if (regSenha.value !== regSenha2.value)  { regErro.value = 'As senhas não coincidem.'; return }
-  if (regSenha.value.length < 6)           { regErro.value = 'A senha deve ter pelo menos 6 caracteres.'; return }
+  const apelido = regApelido.value.trim()
+
+  if (!regNome.value.trim())         { regErro.value = 'Informe seu nome.'; return }
+  if (apelido.length < 3)            { regErro.value = 'O apelido deve ter pelo menos 3 caracteres.'; return }
+  if (!regEmail.value)               { regErro.value = 'Informe seu e-mail.'; return }
+  if (regSenha.value.length < 6)     { regErro.value = 'A senha deve ter pelo menos 6 caracteres.'; return }
+  if (regSenha.value !== regSenha2.value) { regErro.value = 'As senhas não coincidem.'; return }
 
   regLoading.value = true
   try {
+    const snap = await getDocs(query(collection(db, 'users'), where('apelido', '==', apelido)))
+    if (!snap.empty) { regErro.value = 'Este apelido já está em uso. Escolha outro.'; return }
+
     const cred = await createUserWithEmailAndPassword(auth, regEmail.value.trim(), regSenha.value)
-    await updateDoc(doc(db, 'tokens', tokenDocId.value), {
-      used: true, usedBy: regEmail.value, usedAt: serverTimestamp(),
-    })
     await setDoc(doc(db, 'users', cred.user.uid), {
-      email: regEmail.value, tokenDocId: tokenDocId.value, createdAt: serverTimestamp(),
+      email: regEmail.value.trim(),
+      nome: regNome.value.trim(),
+      apelido,
+      createdAt: serverTimestamp(),
     })
   } catch (e) {
     regErro.value = traduzirErro(e.code)
@@ -140,14 +113,14 @@ async function enviarReset() {
 /* ── UTILITÁRIOS ── */
 function traduzirErro(code) {
   const erros = {
-    'auth/user-not-found':        'E-mail não encontrado.',
-    'auth/wrong-password':        'Senha incorreta.',
-    'auth/invalid-email':         'E-mail inválido.',
-    'auth/email-already-in-use':  'Este e-mail já está cadastrado.',
-    'auth/weak-password':         'Senha muito fraca. Use pelo menos 6 caracteres.',
-    'auth/too-many-requests':     'Muitas tentativas. Aguarde alguns minutos.',
-    'auth/invalid-credential':    'E-mail ou senha incorretos.',
-    'auth/network-request-failed':'Sem conexão. Verifique sua internet.',
+    'auth/user-not-found':         'E-mail não encontrado.',
+    'auth/wrong-password':         'Senha incorreta.',
+    'auth/invalid-email':          'E-mail inválido.',
+    'auth/email-already-in-use':   'Este e-mail já está cadastrado.',
+    'auth/weak-password':          'Senha muito fraca. Use pelo menos 6 caracteres.',
+    'auth/too-many-requests':      'Muitas tentativas. Aguarde alguns minutos.',
+    'auth/invalid-credential':     'E-mail ou senha incorretos.',
+    'auth/network-request-failed': 'Sem conexão. Verifique sua internet.',
   }
   return erros[code] || 'Erro inesperado. Tente novamente.'
 }
@@ -189,33 +162,25 @@ function traduzirErro(code) {
         <div class="auth-link-row">
           <a href="#" @click.prevent="view = 'esqueci'">Esqueci minha senha</a>
           <span>·</span>
-          <a href="#" @click.prevent="view = 'token'">Primeiro acesso</a>
-        </div>
-      </div>
-
-      <!-- TOKEN -->
-      <div v-else-if="view === 'token'">
-        <h2>Código de acesso</h2>
-        <p class="auth-info">Digite o código que você recebeu para criar sua conta.</p>
-        <div class="form-group">
-          <label>Código</label>
-          <input type="text" :value="tokenInput" @input="onTokenInput"
-                 placeholder="XXXX-XXXX" maxlength="9" autocomplete="off" spellcheck="false"
-                 class="token-field" @keydown.enter="validarToken">
-        </div>
-        <div v-if="tokenErro" class="auth-erro">{{ tokenErro }}</div>
-        <button class="btn btn-primary btn-full" @click="validarToken" :disabled="tokenLoading">
-          {{ tokenLoading ? 'Verificando...' : 'Validar código' }}
-        </button>
-        <div class="auth-link-row">
-          <a href="#" @click.prevent="view = 'login'">Voltar ao login</a>
+          <a href="#" @click.prevent="view = 'registro'">Criar conta</a>
         </div>
       </div>
 
       <!-- REGISTRO -->
       <div v-else-if="view === 'registro'">
         <h2>Criar conta</h2>
-        <p class="auth-info">Código válido! Defina seu e-mail e senha de acesso.</p>
+        <div class="form-group">
+          <label>Nome completo</label>
+          <input type="text" v-model="regNome" placeholder="Dr. Carlos Silva" autocomplete="name">
+        </div>
+        <div class="form-group">
+          <label>Apelido <span class="apelido-hint">usado para compartilhar itens</span></label>
+          <div class="apelido-input-wrap">
+            <span class="apelido-prefix">@</span>
+            <input type="text" :value="regApelido" @input="onApelidoInput"
+                   placeholder="drcarlos" autocomplete="off" spellcheck="false" maxlength="20">
+          </div>
+        </div>
         <div class="form-group">
           <label>E-mail</label>
           <input type="email" v-model="regEmail" placeholder="seu@email.com" autocomplete="email">
@@ -226,12 +191,16 @@ function traduzirErro(code) {
         </div>
         <div class="form-group">
           <label>Confirmar senha</label>
-          <input type="password" v-model="regSenha2" placeholder="Repita a senha" autocomplete="new-password">
+          <input type="password" v-model="regSenha2" placeholder="Repita a senha"
+                 autocomplete="new-password" @keydown.enter="criarConta">
         </div>
         <div v-if="regErro" class="auth-erro">{{ regErro }}</div>
         <button class="btn btn-primary btn-full" @click="criarConta" :disabled="regLoading">
           {{ regLoading ? 'Criando conta...' : 'Criar conta' }}
         </button>
+        <div class="auth-link-row">
+          <a href="#" @click.prevent="view = 'login'">Já tenho conta</a>
+        </div>
       </div>
 
       <!-- ESQUECI -->
@@ -257,11 +226,10 @@ function traduzirErro(code) {
 </template>
 
 <style scoped>
-.token-field {
-  text-transform: uppercase;
-  letter-spacing: 3px;
-  font-size: 1.1rem;
-  text-align: center;
-  font-family: monospace;
+.apelido-hint {
+  font-size: 0.75rem;
+  font-weight: 400;
+  color: var(--text-light);
+  margin-left: 0.35rem;
 }
 </style>

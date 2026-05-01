@@ -12,60 +12,65 @@ PWA para advogados gerenciarem prazos e audiências com sync em tempo real via F
 ```
 src/
 ├── views/
-│   ├── LoginView.vue      # Login, cadastro por token, reset de senha
-│   ├── AppView.vue        # Tela principal: prazos + audiências (duas abas mobile)
-│   └── AdminView.vue      # Geração/revogação de tokens de acesso
+│   ├── LoginView.vue      # Cadastro livre (nome + @apelido + email + senha), login, reset
+│   ├── AppView.vue        # Tela principal: prazos + audiências + modal de compartilhamento
+│   └── AdminView.vue      # Geração/revogação de tokens (reservado para SaaS futuro)
 ├── composables/
-│   ├── usePrazos.js       # CRUD + onSnapshot de prazos
-│   └── useAudiencias.js   # CRUD + onSnapshot de audiências
+│   ├── usePrazos.js       # Merge de duas queries: próprios + sharedWithUids
+│   ├── useAudiencias.js   # Idem para audiências
+│   ├── useProfile.js      # onSnapshot do perfil do usuário logado (users/{uid})
+│   └── useShare.js        # buscarPorApelido, compartilharItem, removerCompartilhamento
 ├── router/index.js        # Rotas: /login, /app, /admin (com guards de auth)
 ├── firebase.js            # Init Firebase, exporta auth + db
 ├── utils.js               # Helpers de data, labels de urgência
 └── assets/
-    ├── styles.css         # Tema global com CSS vars
+    ├── styles.css         # Tema global com CSS vars + estilos de compartilhamento
     └── admin.css          # Estilos do painel admin
 ```
 
 ## Funcionalidades principais
 
 ### Autenticação
+- Cadastro livre: nome, @apelido único, e-mail, senha
+- @apelido: lowercase, alphanumeric + underscore, mín. 3 chars, verificado por unicidade antes do create
+- Usuários sem apelido (contas antigas) recebem modal não-dispensável ao logar para definir um
 - Login email/senha via Firebase Auth
-- Primeiro acesso por token no formato `XXXX-XXXX` (gerado pelo admin)
 - Reset de senha por e-mail
-- Banner iOS para "Adicionar à Tela Inicial"
 
-### Prazos
+### Prazos & Audiências
 - CRUD com listener `onSnapshot` (real-time)
-- Separação: Pendentes (ordenados por data) / Concluídos
+- Duas queries mergeadas: `userId == eu` + `sharedWithUids array-contains eu`
 - Indicadores visuais de urgência: vencido, hoje, 1-3 dias, 4-7 dias, 7+ dias
-- Campo de protocolo ao concluir
+- Campo de protocolo ao concluir prazos
+- Audiências: toggle presencial ↔ online (link clicável)
 
-### Audiências
-- CRUD com `onSnapshot`
-- Separação: Próximas / Realizadas
-- Toggle presencial (campo local) ↔ online (link clicável)
-- Indicadores de urgência iguais aos prazos
+### Compartilhamento individual
+- Dono busca outro usuário pelo `@apelido`
+- Define role: **editor** (edita/conclui) ou **visualizador** (só lê)
+- Documento armazena `sharedWith: [{uid, apelido, role}]` e `sharedWithUids: [uid]`
+- Cards mostram: `👥 n pessoa(s)` (dono) ou `📨 De @apelido` + badge de role (receptor)
+- Apenas o dono pode deletar e compartilhar; editor pode editar/concluir; visualizador só lê
+- `ownerApelido` salvo no documento na criação para exibição nos cards compartilhados
 
 ### Admin (`/admin`)
 - Acesso restrito por UID fixo no Firestore em `config/admin`
-- Gera tokens `XXXX-XXXX` com caracteres seguros
-- Lista tokens disponíveis e usados em tempo real
-- Revogação com confirmação
+- Tokens `XXXX-XXXX` reservados para uso futuro (SaaS/planos pagos)
 
-## Padrão dos composables
-Ambos (`usePrazos`, `useAudiencias`) seguem o mesmo padrão:
+## Padrão dos composables (usePrazos / useAudiencias)
 ```js
-// Observam userRef reativo → setup onSnapshot filtrado por userId
+// Dois onSnapshot independentes → merge por Map (id como chave)
+// ownItems + sharedItems → prazos.value / audiencias.value
+// addPrazo(data, ownerApelido) — salva sharedWith:[], sharedWithUids:[], ownerApelido
 // Cleanup automático no unmount
-// Funções: add / update / delete com serverTimestamp()
 ```
 
 ## Firebase
 - **Projeto**: `agenda-juridica-956d1`
 - **Collections**: `prazos`, `audiencias`, `tokens`, `users`, `config`
-- Dados isolados por `userId` tanto nas queries quanto nas Firestore Rules
-- Persistência offline habilitada (`enablePersistence`) + multi-tab sync
+- `users/{uid}`: `{ email, nome, apelido, createdAt }`
+- Persistência offline (`enablePersistence`) + multi-tab sync
 - Deploy: `firebase deploy --only hosting` → gera `dist/` via `vite build`
+- Índice Firestore necessário: `sharedWithUids array-contains` (criado automaticamente)
 
 ## Scripts
 ```bash
@@ -75,13 +80,14 @@ npm run preview   # Serve dist/ local
 firebase deploy --only hosting  # Deploy produção
 ```
 
-## Convenções do projeto
+## Convenções
 - Sem TypeScript — JS puro
 - Todo state vive no Firestore; sem store global
 - UI modal-centric: criar/editar/deletar sem navegação de página
 - Layout: duas colunas no desktop, abas no mobile
 - Firebase API key no `src/firebase.js` é pública por design (segurança via Firestore Rules)
 - Sem `.env` — credenciais Firebase são públicas e seguras por Rules
+- Escritórios (workspaces) são a próxima feature planejada após compartilhamento individual
 
 ## Arquivos de referência
 - [`FUNCIONALIDADES.md`](FUNCIONALIDADES.md) — levantamento completo das features

@@ -1,10 +1,13 @@
 <script setup>
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { onAuthStateChanged, signOut } from 'firebase/auth'
-import { auth } from '../firebase'
+import { collection, query, where, getDocs, doc, updateDoc } from 'firebase/firestore'
+import { auth, db } from '../firebase'
 import { usePrazos } from '../composables/usePrazos'
 import { useAudiencias } from '../composables/useAudiencias'
+import { useProfile } from '../composables/useProfile'
+import { buscarPorApelido, compartilharItem, removerCompartilhamento } from '../composables/useShare'
 import { todayStr, formatDate, urgencyLabel, urgencyClass, audienciaUrgencyLabel, audienciaUrgencyClass } from '../utils'
 
 const router = useRouter()
@@ -20,6 +23,37 @@ function logout() {
   signOut(auth).then(() => router.replace('/login'))
 }
 
+/* ── PERFIL ── */
+const { profile } = useProfile(currentUser)
+
+/* ── MODAL: Definir apelido (usuários sem apelido) ── */
+const mApelido = reactive({ open: false, valor: '', erro: '', saving: false })
+
+watch(profile, p => {
+  if (p && !p.apelido) mApelido.open = true
+})
+
+function onModalApelidoInput(e) {
+  mApelido.valor = e.target.value.toLowerCase().replace(/^@/, '').replace(/[^a-z0-9_]/g, '')
+}
+
+async function salvarApelido() {
+  mApelido.erro = ''
+  const apelido = mApelido.valor.trim()
+  if (apelido.length < 3) { mApelido.erro = 'O apelido deve ter pelo menos 3 caracteres.'; return }
+  mApelido.saving = true
+  try {
+    const snap = await getDocs(query(collection(db, 'users'), where('apelido', '==', apelido)))
+    if (!snap.empty) { mApelido.erro = 'Este apelido já está em uso. Escolha outro.'; return }
+    await updateDoc(doc(db, 'users', currentUser.value.uid), { apelido })
+    mApelido.open = false
+  } catch (e) {
+    mApelido.erro = 'Erro ao salvar. Tente novamente.'
+  } finally {
+    mApelido.saving = false
+  }
+}
+
 /* ── iOS BANNER ── */
 const showIosBanner = ref(false)
 onMounted(() => {
@@ -29,6 +63,21 @@ onMounted(() => {
 
 /* ── ABAS MOBILE ── */
 const activeTab = ref('prazos')
+
+/* ── PERMISSÕES ── */
+function isOwner(item) {
+  return item.userId === currentUser.value?.uid
+}
+
+function myRole(item) {
+  if (isOwner(item)) return 'owner'
+  return item.sharedWith?.find(s => s.uid === currentUser.value?.uid)?.role || 'viewer'
+}
+
+function canEdit(item) {
+  const role = myRole(item)
+  return role === 'owner' || role === 'editor'
+}
 
 /* ── PRAZOS ── */
 const { prazos, addPrazo, updatePrazo, deletePrazo } = usePrazos(currentUser)
@@ -65,7 +114,10 @@ async function salvarPrazo() {
     if (mp.editId) {
       await updatePrazo(mp.editId, { titulo: mp.titulo.trim(), obs: mp.obs.trim(), data: mp.data })
     } else {
-      await addPrazo({ titulo: mp.titulo.trim(), obs: mp.obs.trim(), data: mp.data, completed: false, completedDate: null, protocol: null })
+      await addPrazo(
+        { titulo: mp.titulo.trim(), obs: mp.obs.trim(), data: mp.data, completed: false, completedDate: null, protocol: null },
+        profile.value?.apelido || '',
+      )
     }
     mp.open = false
   } catch (e) {
@@ -167,7 +219,7 @@ async function salvarAudiencia() {
     if (ma.editId) {
       await updateAudiencia(ma.editId, obj)
     } else {
-      await addAudiencia(obj)
+      await addAudiencia(obj, profile.value?.apelido || '')
     }
     ma.open = false
   } catch (e) {
@@ -180,6 +232,87 @@ async function salvarAudiencia() {
 async function confirmarDeletarAudiencia(id) {
   if (!confirm('Excluir esta audiência?')) return
   try { await deleteAudiencia(id) } catch (e) { alert('Erro ao excluir: ' + e.message) }
+}
+
+/* ── COMPARTILHAMENTO ── */
+const ms = reactive({
+  open: false,
+  tipo: '',
+  itemId: '',
+  itemTitulo: '',
+  currentShares: [],
+  searchInput: '',
+  searchResult: null,
+  searchErro: '',
+  searchLoading: false,
+  selectedRole: 'editor',
+  saving: false,
+  removingUid: '',
+})
+
+function abrirModalCompartilhar(tipo, item) {
+  ms.tipo = tipo
+  ms.itemId = item.id
+  ms.itemTitulo = item.titulo
+  ms.currentShares = [...(item.sharedWith || [])]
+  ms.searchInput = ''
+  ms.searchResult = null
+  ms.searchErro = ''
+  ms.selectedRole = 'editor'
+  ms.open = true
+}
+
+async function buscarApelido() {
+  ms.searchResult = null
+  ms.searchErro = ''
+  if (!ms.searchInput.trim()) return
+  ms.searchLoading = true
+  try {
+    const result = await buscarPorApelido(ms.searchInput)
+    if (!result) {
+      ms.searchErro = 'Usuário não encontrado.'
+    } else if (result.uid === currentUser.value.uid) {
+      ms.searchErro = 'Você não pode compartilhar consigo mesmo.'
+    } else if (ms.currentShares.some(s => s.uid === result.uid)) {
+      ms.searchErro = 'Este usuário já tem acesso.'
+    } else {
+      ms.searchResult = result
+    }
+  } catch {
+    ms.searchErro = 'Erro ao buscar. Tente novamente.'
+  } finally {
+    ms.searchLoading = false
+  }
+}
+
+async function adicionarCompartilhamento() {
+  if (!ms.searchResult) return
+  ms.saving = true
+  const colecao = ms.tipo === 'prazo' ? 'prazos' : 'audiencias'
+  try {
+    await compartilharItem(colecao, ms.itemId, ms.searchResult.uid, ms.searchResult.apelido, ms.selectedRole)
+    ms.currentShares = [...ms.currentShares, { uid: ms.searchResult.uid, apelido: ms.searchResult.apelido, role: ms.selectedRole }]
+    ms.searchInput = ''
+    ms.searchResult = null
+    ms.searchErro = ''
+  } catch (e) {
+    ms.searchErro = 'Erro ao compartilhar: ' + e.message
+  } finally {
+    ms.saving = false
+  }
+}
+
+async function removerShare(share) {
+  ms.removingUid = share.uid
+  const colecao = ms.tipo === 'prazo' ? 'prazos' : 'audiencias'
+  try {
+    await removerCompartilhamento(colecao, ms.itemId, share)
+    ms.currentShares = ms.currentShares.filter(s => s.uid !== share.uid)
+  } catch (e) {
+    alert('Erro ao remover acesso: ' + e.message)
+  } finally {
+    ms.removingUid = ''
+  }
 }
 </script>
 
@@ -194,7 +327,7 @@ async function confirmarDeletarAudiencia(id) {
         <div class="subtitle">Controle de prazos e audiências</div>
       </div>
       <div class="header-actions">
-        <span class="user-email">{{ currentUser.email }}</span>
+        <span class="user-email">{{ profile?.apelido ? '@' + profile.apelido : currentUser.email }}</span>
         <button @click="logout" class="btn-sair">Sair</button>
       </div>
     </header>
@@ -243,14 +376,20 @@ async function confirmarDeletarAudiencia(id) {
                   <div v-if="p.obs" class="card-desc">{{ p.obs }}</div>
                 </div>
                 <div class="card-actions">
-                  <button class="btn btn-outline btn-sm" @click="abrirModalPrazo(p.id)" title="Editar">✏️</button>
-                  <button class="btn btn-success btn-sm" @click="abrirModalProtocolo(p.id)" title="Concluir">✓</button>
-                  <button class="btn btn-danger btn-sm" @click="confirmarDeletarPrazo(p.id)" title="Excluir">🗑</button>
+                  <button v-if="isOwner(p)" class="btn btn-outline btn-sm" @click="abrirModalCompartilhar('prazo', p)" title="Compartilhar">👥</button>
+                  <button v-if="canEdit(p)" class="btn btn-outline btn-sm" @click="abrirModalPrazo(p.id)" title="Editar">✏️</button>
+                  <button v-if="canEdit(p)" class="btn btn-success btn-sm" @click="abrirModalProtocolo(p.id)" title="Concluir">✓</button>
+                  <button v-if="isOwner(p)" class="btn btn-danger btn-sm" @click="confirmarDeletarPrazo(p.id)" title="Excluir">🗑</button>
                 </div>
               </div>
               <div class="card-meta">
                 <span class="tag tag-date">📅 {{ formatDate(p.data) }}</span>
                 <span class="tag" :class="urgencyClass(p.data)">{{ urgencyLabel(p.data) }}</span>
+                <span v-if="isOwner(p) && p.sharedWith?.length > 0" class="tag tag-shared">👥 {{ p.sharedWith.length }} pessoa(s)</span>
+                <span v-if="!isOwner(p)" class="tag tag-shared">📨 De @{{ p.ownerApelido || '?' }}</span>
+                <span v-if="!isOwner(p)" class="tag" :class="myRole(p) === 'editor' ? 'tag-editor' : 'tag-viewer'">
+                  {{ myRole(p) === 'editor' ? 'Editor' : 'Visualizador' }}
+                </span>
               </div>
             </div>
 
@@ -262,13 +401,14 @@ async function confirmarDeletarAudiencia(id) {
                   <div v-if="p.obs" class="card-desc">{{ p.obs }}</div>
                 </div>
                 <div class="card-actions">
-                  <button class="btn btn-danger btn-sm" @click="confirmarDeletarPrazo(p.id)" title="Excluir">🗑</button>
+                  <button v-if="isOwner(p)" class="btn btn-danger btn-sm" @click="confirmarDeletarPrazo(p.id)" title="Excluir">🗑</button>
                 </div>
               </div>
               <div class="card-meta">
                 <span class="tag tag-date">📅 {{ formatDate(p.data) }}</span>
                 <span class="tag tag-done">✅ Concluído em {{ formatDate(p.completedDate) }}</span>
                 <span v-if="p.protocol" class="protocol-badge" @click="verProtocolo(p.id)">📎 Ver protocolo</span>
+                <span v-if="!isOwner(p)" class="tag tag-shared">📨 De @{{ p.ownerApelido || '?' }}</span>
               </div>
             </div>
           </template>
@@ -303,8 +443,9 @@ async function confirmarDeletarAudiencia(id) {
                   <div v-if="a.obs" class="card-desc">{{ a.obs }}</div>
                 </div>
                 <div class="card-actions">
-                  <button class="btn btn-outline btn-sm" @click="abrirModalAudiencia(a.id)" title="Editar">✏️</button>
-                  <button class="btn btn-danger btn-sm" @click="confirmarDeletarAudiencia(a.id)" title="Excluir">🗑</button>
+                  <button v-if="isOwner(a)" class="btn btn-outline btn-sm" @click="abrirModalCompartilhar('audiencia', a)" title="Compartilhar">👥</button>
+                  <button v-if="canEdit(a)" class="btn btn-outline btn-sm" @click="abrirModalAudiencia(a.id)" title="Editar">✏️</button>
+                  <button v-if="isOwner(a)" class="btn btn-danger btn-sm" @click="confirmarDeletarAudiencia(a.id)" title="Excluir">🗑</button>
                 </div>
               </div>
               <div class="card-meta">
@@ -313,6 +454,11 @@ async function confirmarDeletarAudiencia(id) {
                 <a v-if="a.online" :href="a.link" target="_blank" rel="noopener" class="tag-link">🔗 Entrar na reunião</a>
                 <span v-else class="tag tag-location">📍 {{ a.local }}</span>
                 <span class="tag" :class="audienciaUrgencyClass(a.data)">{{ audienciaUrgencyLabel(a.data) }}</span>
+                <span v-if="isOwner(a) && a.sharedWith?.length > 0" class="tag tag-shared">👥 {{ a.sharedWith.length }} pessoa(s)</span>
+                <span v-if="!isOwner(a)" class="tag tag-shared">📨 De @{{ a.ownerApelido || '?' }}</span>
+                <span v-if="!isOwner(a)" class="tag" :class="myRole(a) === 'editor' ? 'tag-editor' : 'tag-viewer'">
+                  {{ myRole(a) === 'editor' ? 'Editor' : 'Visualizador' }}
+                </span>
               </div>
             </div>
 
@@ -324,14 +470,15 @@ async function confirmarDeletarAudiencia(id) {
                   <div v-if="a.obs" class="card-desc">{{ a.obs }}</div>
                 </div>
                 <div class="card-actions">
-                  <button class="btn btn-outline btn-sm" @click="abrirModalAudiencia(a.id)" title="Editar">✏️</button>
-                  <button class="btn btn-danger btn-sm" @click="confirmarDeletarAudiencia(a.id)" title="Excluir">🗑</button>
+                  <button v-if="canEdit(a)" class="btn btn-outline btn-sm" @click="abrirModalAudiencia(a.id)" title="Editar">✏️</button>
+                  <button v-if="isOwner(a)" class="btn btn-danger btn-sm" @click="confirmarDeletarAudiencia(a.id)" title="Excluir">🗑</button>
                 </div>
               </div>
               <div class="card-meta">
                 <span class="tag tag-date">📅 {{ formatDate(a.data) }} às {{ a.hora }}</span>
                 <a v-if="a.online" :href="a.link" target="_blank" rel="noopener" class="tag-link">🔗 Link da reunião</a>
                 <span v-else class="tag tag-location">📍 {{ a.local }}</span>
+                <span v-if="!isOwner(a)" class="tag tag-shared">📨 De @{{ a.ownerApelido || '?' }}</span>
               </div>
             </div>
           </template>
@@ -446,6 +593,95 @@ async function confirmarDeletarAudiencia(id) {
           <button class="modal-close" @click="mvp.open = false">✕</button>
         </div>
         <p style="font-size:0.875rem; white-space:pre-wrap; background:#f5f7fa; padding:1rem; border-radius:8px;">{{ mvp.content }}</p>
+      </div>
+    </div>
+
+    <!-- MODAL: Definir apelido (usuários sem apelido) -->
+    <div class="modal-overlay" :class="{ open: mApelido.open }">
+      <div class="modal">
+        <div class="modal-header">
+          <div class="modal-title">👤 Escolha seu @apelido</div>
+        </div>
+        <p class="modal-info">
+          Seu apelido é usado para que outras pessoas compartilhem prazos e audiências com você.
+          Escolha com cuidado — ele identifica você no sistema.
+        </p>
+        <div class="form-group">
+          <label>@apelido</label>
+          <div class="apelido-input-wrap">
+            <span class="apelido-prefix">@</span>
+            <input type="text" :value="mApelido.valor" @input="onModalApelidoInput"
+                   placeholder="seuapelido" autocomplete="off" spellcheck="false" maxlength="20">
+          </div>
+        </div>
+        <div v-if="mApelido.erro" class="auth-erro">{{ mApelido.erro }}</div>
+        <div class="form-actions">
+          <button class="btn btn-primary" @click="salvarApelido" :disabled="mApelido.saving">
+            {{ mApelido.saving ? 'Salvando...' : 'Confirmar' }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL: Compartilhar -->
+    <div class="modal-overlay" :class="{ open: ms.open }" @click.self="ms.open = false">
+      <div class="modal">
+        <div class="modal-header">
+          <div class="modal-title">👥 Compartilhar</div>
+          <button class="modal-close" @click="ms.open = false">✕</button>
+        </div>
+        <p class="modal-info">{{ ms.itemTitulo }}</p>
+
+        <!-- Pessoas com acesso -->
+        <div v-if="ms.currentShares.length > 0" class="share-list">
+          <div class="section-label" style="margin-bottom:0.5rem">Com acesso</div>
+          <div v-for="share in ms.currentShares" :key="share.uid" class="share-item">
+            <span class="share-apelido">@{{ share.apelido }}</span>
+            <span class="tag" :class="share.role === 'editor' ? 'tag-editor' : 'tag-viewer'">
+              {{ share.role === 'editor' ? 'Editor' : 'Visualizador' }}
+            </span>
+            <button class="btn btn-danger btn-sm" @click="removerShare(share)"
+                    :disabled="ms.removingUid === share.uid">
+              {{ ms.removingUid === share.uid ? '...' : 'Remover' }}
+            </button>
+          </div>
+        </div>
+
+        <!-- Buscar -->
+        <div class="section-label" style="margin: 0.85rem 0 0.5rem">Adicionar pessoa</div>
+        <div class="share-search-row">
+          <div class="form-group" style="margin-bottom:0; flex:1">
+            <input type="text" v-model="ms.searchInput" placeholder="@apelido"
+                   autocomplete="off" @keydown.enter="buscarApelido">
+          </div>
+          <button class="btn btn-outline" @click="buscarApelido" :disabled="ms.searchLoading">
+            {{ ms.searchLoading ? '...' : 'Buscar' }}
+          </button>
+        </div>
+
+        <div v-if="ms.searchErro" class="auth-erro" style="margin-top:0.5rem">{{ ms.searchErro }}</div>
+
+        <!-- Resultado da busca -->
+        <div v-if="ms.searchResult" class="share-result">
+          <div class="share-result-info">
+            <strong>@{{ ms.searchResult.apelido }}</strong>
+            <span>{{ ms.searchResult.nome }}</span>
+          </div>
+          <div class="share-roles">
+            <label class="role-option">
+              <input type="radio" v-model="ms.selectedRole" value="viewer"> Visualizador
+            </label>
+            <label class="role-option">
+              <input type="radio" v-model="ms.selectedRole" value="editor"> Editor
+            </label>
+          </div>
+          <div class="form-actions" style="margin-top:0.75rem">
+            <button class="btn btn-primary" @click="adicionarCompartilhamento" :disabled="ms.saving">
+              {{ ms.saving ? 'Compartilhando...' : '+ Compartilhar' }}
+            </button>
+          </div>
+        </div>
+
       </div>
     </div>
 

@@ -12,19 +12,42 @@ export function useAudiencias(userRef) {
     const uid = isRef(userRef) ? userRef.value?.uid : userRef
     if (!uid) return
 
-    const unsub = onSnapshot(
+    let ownItems = []
+    let sharedItems = []
+
+    function merge() {
+      const map = new Map()
+      ownItems.forEach(i => map.set(i.id, i))
+      sharedItems.forEach(i => { if (!map.has(i.id)) map.set(i.id, i) })
+      audiencias.value = [...map.values()]
+    }
+
+    const unsub1 = onSnapshot(
       query(collection(db, 'audiencias'), where('userId', '==', uid)),
-      snap => { audiencias.value = snap.docs.map(d => ({ id: d.id, ...d.data() })) },
+      snap => { ownItems = snap.docs.map(d => ({ id: d.id, ...d.data() })); merge() },
     )
-    onCleanup(unsub)
+
+    const unsub2 = onSnapshot(
+      query(collection(db, 'audiencias'), where('sharedWithUids', 'array-contains', uid)),
+      snap => { sharedItems = snap.docs.map(d => ({ id: d.id, ...d.data() })); merge() },
+    )
+
+    onCleanup(() => { unsub1(); unsub2() })
   })
 
   function uid() {
     return isRef(userRef) ? userRef.value?.uid : userRef
   }
 
-  async function addAudiencia(data) {
-    return addDoc(collection(db, 'audiencias'), { ...data, userId: uid(), createdAt: serverTimestamp() })
+  async function addAudiencia(data, ownerApelido = '') {
+    return addDoc(collection(db, 'audiencias'), {
+      ...data,
+      userId: uid(),
+      ownerApelido,
+      sharedWith: [],
+      sharedWithUids: [],
+      createdAt: serverTimestamp(),
+    })
   }
 
   async function updateAudiencia(id, data) {
