@@ -51,8 +51,17 @@ const userSearch = ref('')
 
 function iniciarListaUsuarios() {
   unsubUsers = onSnapshot(
-    query(collection(db, 'users'), orderBy('createdAt', 'desc')),
-    snap => { users.value = snap.docs.map(d => ({ id: d.id, ...d.data() })) },
+    collection(db, 'users'),
+    snap => {
+      users.value = snap.docs
+        .map(d => ({ id: d.id, ...d.data() }))
+        .sort((a, b) => {
+          const ta = a.createdAt?.toMillis?.() ?? 0
+          const tb = b.createdAt?.toMillis?.() ?? 0
+          return tb - ta
+        })
+    },
+    err => { console.error('Admin/users:', err.message) },
   )
 }
 
