@@ -68,6 +68,9 @@ src/
 - **Projeto**: `agenda-juridica-956d1`
 - **Collections**: `prazos`, `audiencias`, `tokens`, `users`, `config`
 - `users/{uid}`: `{ email, nome, apelido, createdAt }`
+- Regras: `users` — read para qualquer auth, write só para o próprio uid (necessário para busca por @apelido)
+- Regras: `prazos`/`audiencias` — read/update para dono ou quem está em `sharedWithUids`, delete só para dono
+- Arquivo de regras: [`firestore.rules`](firestore.rules)
 - Persistência offline (`enablePersistence`) + multi-tab sync
 - Deploy: `firebase deploy --only hosting` → gera `dist/` via `vite build`
 - Índice Firestore necessário: `sharedWithUids array-contains` (criado automaticamente)

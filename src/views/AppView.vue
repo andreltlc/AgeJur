@@ -2,7 +2,7 @@
 import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { onAuthStateChanged, signOut } from 'firebase/auth'
-import { collection, query, where, getDocs, doc, updateDoc } from 'firebase/firestore'
+import { collection, query, where, getDocs, doc, updateDoc, setDoc } from 'firebase/firestore'
 import { auth, db } from '../firebase'
 import { usePrazos } from '../composables/usePrazos'
 import { useAudiencias } from '../composables/useAudiencias'
@@ -24,13 +24,13 @@ function logout() {
 }
 
 /* ── PERFIL ── */
-const { profile } = useProfile(currentUser)
+const { profile, profileLoaded } = useProfile(currentUser)
 
 /* ── MODAL: Definir apelido (usuários sem apelido) ── */
 const mApelido = reactive({ open: false, valor: '', erro: '', saving: false })
 
-watch(profile, p => {
-  if (p && !p.apelido) mApelido.open = true
+watch(profileLoaded, loaded => {
+  if (loaded && !profile.value?.apelido) mApelido.open = true
 })
 
 function onModalApelidoInput(e) {
@@ -45,7 +45,7 @@ async function salvarApelido() {
   try {
     const snap = await getDocs(query(collection(db, 'users'), where('apelido', '==', apelido)))
     if (!snap.empty) { mApelido.erro = 'Este apelido já está em uso. Escolha outro.'; return }
-    await updateDoc(doc(db, 'users', currentUser.value.uid), { apelido })
+    await setDoc(doc(db, 'users', currentUser.value.uid), { apelido }, { merge: true })
     mApelido.open = false
   } catch (e) {
     mApelido.erro = 'Erro ao salvar. Tente novamente.'
