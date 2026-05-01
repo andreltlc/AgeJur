@@ -119,7 +119,12 @@ async function salvarEditUser() {
     const conflito = snap.docs.find(d => d.id !== uid)
     if (conflito) { mEditUser.value.erro = 'Este apelido já está em uso.'; return }
 
-    await setDoc(doc(db, 'users', uid), { nome: nome.trim(), apelido }, { merge: true })
+    const emailVal = mEditUser.value.email.trim()
+    await setDoc(doc(db, 'users', uid), {
+      nome: nome.trim(),
+      apelido,
+      ...(emailVal && { email: emailVal }),
+    }, { merge: true })
     mEditUser.value.open = false
   } catch (e) {
     mEditUser.value.erro = 'Erro ao salvar: ' + e.message
@@ -324,7 +329,7 @@ function formatarData(timestamp) {
     </div>
 
     <!-- ══ MODAL EDITAR USUÁRIO ══ -->
-    <div v-if="mEditUser.open" class="modal-overlay" @click.self="mEditUser.open = false">
+    <div v-if="mEditUser.open" class="modal-overlay open" @click.self="mEditUser.open = false">
       <div class="modal">
         <div class="modal-header">
           <h3>✏️ Editar usuário</h3>
@@ -344,8 +349,8 @@ function formatarData(timestamp) {
             </div>
           </div>
           <div class="form-group">
-            <label>E-mail <span style="font-size:0.75rem;color:var(--text-light)">(somente leitura)</span></label>
-            <input type="email" :value="mEditUser.email" disabled style="opacity:0.6;cursor:not-allowed">
+            <label>E-mail de login</label>
+            <input type="email" v-model="mEditUser.email" placeholder="email@exemplo.com">
           </div>
           <div v-if="mEditUser.erro" class="auth-erro">{{ mEditUser.erro }}</div>
         </div>
