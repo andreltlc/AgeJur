@@ -12,19 +12,42 @@ export function usePrazos(userRef) {
     const uid = isRef(userRef) ? userRef.value?.uid : userRef
     if (!uid) return
 
-    const unsub = onSnapshot(
+    let ownItems = []
+    let sharedItems = []
+
+    function merge() {
+      const map = new Map()
+      ownItems.forEach(i => map.set(i.id, i))
+      sharedItems.forEach(i => { if (!map.has(i.id)) map.set(i.id, i) })
+      prazos.value = [...map.values()]
+    }
+
+    const unsub1 = onSnapshot(
       query(collection(db, 'prazos'), where('userId', '==', uid)),
-      snap => { prazos.value = snap.docs.map(d => ({ id: d.id, ...d.data() })) },
+      snap => { ownItems = snap.docs.map(d => ({ id: d.id, ...d.data() })); merge() },
     )
-    onCleanup(unsub)
+
+    const unsub2 = onSnapshot(
+      query(collection(db, 'prazos'), where('sharedWithUids', 'array-contains', uid)),
+      snap => { sharedItems = snap.docs.map(d => ({ id: d.id, ...d.data() })); merge() },
+    )
+
+    onCleanup(() => { unsub1(); unsub2() })
   })
 
   function uid() {
     return isRef(userRef) ? userRef.value?.uid : userRef
   }
 
-  async function addPrazo(data) {
-    return addDoc(collection(db, 'prazos'), { ...data, userId: uid(), createdAt: serverTimestamp() })
+  async function addPrazo(data, ownerApelido = '') {
+    return addDoc(collection(db, 'prazos'), {
+      ...data,
+      userId: uid(),
+      ownerApelido,
+      sharedWith: [],
+      sharedWithUids: [],
+      createdAt: serverTimestamp(),
+    })
   }
 
   async function updatePrazo(id, data) {
