@@ -72,7 +72,7 @@ src/
 - Regras: `prazos`/`audiencias` — read/update para dono ou quem está em `sharedWithUids`, delete só para dono
 - Arquivo de regras: [`firestore.rules`](firestore.rules)
 - Persistência offline (`enablePersistence`) + multi-tab sync
-- Deploy: `firebase deploy --only hosting` → gera `dist/` via `vite build`
+- Deploy: automático via **GitHub Actions** no push para `main` — não usar `firebase deploy` manualmente
 - Índice Firestore necessário: `sharedWithUids array-contains` (criado automaticamente)
 
 ## Scripts
@@ -80,7 +80,7 @@ src/
 npm run dev       # Dev server (HMR)
 npm run build     # Build → dist/
 npm run preview   # Serve dist/ local
-firebase deploy --only hosting  # Deploy produção
+# Deploy: push para main → GitHub Actions faz o build e deploy automático
 ```
 
 ## Convenções
