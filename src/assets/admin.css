@@ -175,3 +175,126 @@
     color: white;
 }
 .admin-btn-outline:hover { background: rgba(255, 255, 255, 0.1); }
+
+/* ── ABAS ── */
+.admin-tabs {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.admin-tab {
+    flex: 1;
+    padding: 0.65rem 1rem;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: white;
+    color: var(--text-light);
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+}
+
+.admin-tab:hover { background: var(--bg); color: var(--text); }
+
+.admin-tab.active {
+    background: var(--primary);
+    color: white;
+    border-color: var(--primary);
+}
+
+.admin-tab-count {
+    background: rgba(255,255,255,0.25);
+    border-radius: 10px;
+    padding: 0.1rem 0.45rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+}
+
+.admin-tab:not(.active) .admin-tab-count {
+    background: var(--bg);
+    color: var(--text-light);
+}
+
+/* ── BUSCA ── */
+.admin-search-row {
+    padding: 0.75rem 1.25rem;
+    border-bottom: 1px solid var(--border);
+}
+
+.admin-search {
+    width: 100%;
+    padding: 0.55rem 0.9rem;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 0.9rem;
+    box-sizing: border-box;
+}
+
+.admin-search:focus { outline: none; border-color: var(--primary); }
+
+/* ── CARD DE USUÁRIO ── */
+.user-card {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.85rem 1.25rem;
+    border-bottom: 1px solid var(--border);
+    transition: background 0.15s;
+    flex-wrap: wrap;
+}
+
+.user-card:hover { background: var(--bg); }
+.user-card:last-child { border-bottom: none; }
+
+.user-info { flex: 1; min-width: 180px; }
+
+.user-nome {
+    font-weight: 600;
+    font-size: 0.95rem;
+    color: var(--text);
+}
+
+.user-meta {
+    display: flex;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+    margin-top: 0.2rem;
+    align-items: center;
+}
+
+.user-apelido {
+    font-size: 0.8rem;
+    color: var(--primary);
+    font-weight: 600;
+}
+
+.user-email {
+    font-size: 0.8rem;
+    color: var(--text-light);
+}
+
+.user-data {
+    font-size: 0.75rem;
+    color: var(--text-light);
+}
+
+.user-actions {
+    display: flex;
+    gap: 0.4rem;
+    flex-wrap: wrap;
+}
+
+/* ── EMPTY STATE ── */
+.empty-state {
+    text-align: center;
+    padding: 2.5rem 1rem;
+    color: var(--text-light);
+}
+
+.empty-state .icon { font-size: 2rem; margin-bottom: 0.5rem; }
