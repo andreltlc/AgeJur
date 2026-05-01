@@ -81,7 +81,9 @@ const resetStatus = ref({}) // uid → 'sending' | 'sent' | 'error'
 async function enviarResetSenha(user) {
   resetStatus.value[user.id] = 'sending'
   try {
-    await sendPasswordResetEmail(auth, user.email)
+    await sendPasswordResetEmail(auth, user.email, {
+      url: window.location.origin + '/login',
+    })
     resetStatus.value[user.id] = 'sent'
     setTimeout(() => { delete resetStatus.value[user.id] }, 4000)
   } catch {
