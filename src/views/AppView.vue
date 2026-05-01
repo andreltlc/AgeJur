@@ -31,7 +31,7 @@ const mApelido = reactive({ open: false, valor: '', erro: '', saving: false })
 
 watch(profileLoaded, loaded => {
   if (loaded && !profile.value?.apelido) mApelido.open = true
-})
+}, { immediate: true })
 
 function onModalApelidoInput(e) {
   mApelido.valor = e.target.value.toLowerCase().replace(/^@/, '').replace(/[^a-z0-9_]/g, '')
