@@ -37,7 +37,8 @@ service cloud.firestore {
 
     match /users/{uid} {
       allow read: if request.auth != null;
-      allow write: if request.auth != null && request.auth.uid == uid;
+      // Usuário escreve no próprio perfil OU admin escreve em qualquer perfil
+      allow write: if (request.auth != null && request.auth.uid == uid) || isAdmin();
     }
 
     match /prazos/{id} {
@@ -56,6 +57,12 @@ service cloud.firestore {
       allow update: if isOwner(resource)
         || (isShared(resource) && sharingFieldsUnchanged());
       allow delete: if isOwner(resource);
+    }
+
+    // Assinaturas/eventos Hotmart — somente admin lê, Cloud Function (admin SDK) escreve
+    match /subscriptions/{id} {
+      allow read: if isAdmin();
+      allow write: if false; // escrita apenas via Cloud Function (admin SDK bypassa rules)
     }
 
   }

@@ -19,11 +19,15 @@ jobs:
           node-version: '20'
           cache: 'npm'
 
-      - name: Install dependencies
+      - name: Install root dependencies
         run: npm ci
 
       - name: Build
         run: npm run build
 
-      - name: Deploy to Firebase Hosting
-        run: npx firebase-tools deploy --only hosting --token ${{ secrets.FIREBASE_TOKEN }} --non-interactive
+      - name: Install Functions dependencies
+        run: npm ci
+        working-directory: functions
+
+      - name: Deploy to Firebase (Hosting + Functions + Firestore Rules)
+        run: npx firebase-tools deploy --only hosting,functions,firestore --token ${{ secrets.FIREBASE_TOKEN }} --non-interactive

@@ -736,6 +736,164 @@ textarea {
 }
 
 /* =============================================
+   PLANO — BANNER E BADGES
+   ============================================= */
+
+/* Banner gratuito exibido abaixo do header */
+.plan-banner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    background: #fffbea;
+    border-bottom: 1px solid #f0d070;
+    padding: 0.6rem 1.5rem;
+    font-size: 0.82rem;
+    color: #7a5c00;
+    flex-wrap: wrap;
+}
+
+.plan-banner-text { flex: 1; min-width: 200px; }
+
+.plan-banner-btn {
+    background: #c9a84c;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 0.4rem 1rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+    text-decoration: none;
+    white-space: nowrap;
+    transition: background 0.2s;
+}
+.plan-banner-btn:hover { background: #b8963e; }
+
+/* Badge Pro / Upgrade no header */
+.badge-pro {
+    background: linear-gradient(135deg, #c9a84c, #e8c96a);
+    color: white;
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 0.22rem 0.65rem;
+    border-radius: 999px;
+    white-space: nowrap;
+}
+
+.badge-free {
+    background: rgba(255,255,255,0.18);
+    border: 1px solid rgba(255,255,255,0.35);
+    color: white;
+    font-size: 0.72rem;
+    font-weight: 600;
+    padding: 0.22rem 0.65rem;
+    border-radius: 999px;
+    text-decoration: none;
+    white-space: nowrap;
+    transition: background 0.2s;
+}
+.badge-free:hover { background: rgba(255,255,255,0.28); }
+
+/* =============================================
+   ADMIN — PLANOS
+   ============================================= */
+
+/* Badge de plano nos cards de usuário */
+.user-plan-badge {
+    display: inline-block;
+    font-size: 0.7rem;
+    font-weight: 700;
+    padding: 0.15rem 0.55rem;
+    border-radius: 999px;
+    margin-left: 0.5rem;
+    vertical-align: middle;
+}
+
+.user-plan-badge.plan-pro {
+    background: linear-gradient(135deg, #c9a84c, #e8c96a);
+    color: white;
+}
+
+.user-plan-badge.plan-free {
+    background: #e9ecef;
+    color: #6c757d;
+}
+
+/* Botão ativar Pro */
+.btn-plan-ativar {
+    background: linear-gradient(135deg, #c9a84c, #b8963e);
+    color: white;
+    border: none;
+}
+.btn-plan-ativar:hover { opacity: 0.88; }
+
+/* Cards de assinatura (aba Assinaturas) */
+.subs-stats {
+    display: flex;
+    gap: 1.5rem;
+    padding: 1rem 0 1.5rem;
+    flex-wrap: wrap;
+}
+
+.subs-stat {
+    background: var(--bg);
+    border-radius: 10px;
+    padding: 1rem 1.5rem;
+    text-align: center;
+    border: 1px solid var(--border);
+    min-width: 120px;
+}
+
+.subs-stat-num {
+    font-size: 1.8rem;
+    font-weight: 800;
+    color: var(--primary);
+    line-height: 1;
+}
+
+.subs-stat-label {
+    font-size: 0.75rem;
+    color: var(--text-light);
+    margin-top: 0.25rem;
+}
+
+.sub-card {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.65rem 0;
+    border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
+}
+.sub-card:last-child { border-bottom: none; }
+
+.sub-event {
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 0.2rem 0.6rem;
+    border-radius: 6px;
+    white-space: nowrap;
+}
+
+.sub-event.event-ok  { background: #e8f5e9; color: #2e7d32; }
+.sub-event.event-cancel { background: #fdecea; color: #c0392b; }
+
+.sub-info {
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
+    flex-wrap: wrap;
+    flex: 1;
+    font-size: 0.82rem;
+}
+
+.sub-email { font-weight: 500; color: var(--text); }
+.sub-meta  { color: var(--text-light); }
+.sub-tx    { font-family: monospace; font-size: 0.75rem; color: var(--text-light); }
+
+/* =============================================
    RESPONSIVO — MOBILE
    ============================================= */
 @media (max-width: 768px) {

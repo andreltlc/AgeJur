@@ -7,6 +7,7 @@ import { auth, db } from '../firebase'
 import { usePrazos } from '../composables/usePrazos'
 import { useAudiencias } from '../composables/useAudiencias'
 import { useProfile } from '../composables/useProfile'
+import { usePlan, LIMITES_FREE } from '../composables/usePlan'
 import { buscarPorApelido, compartilharItem, removerCompartilhamento } from '../composables/useShare'
 import { todayStr, formatDate, urgencyLabel, urgencyClass, audienciaUrgencyLabel, audienciaUrgencyClass } from '../utils'
 
@@ -25,6 +26,9 @@ function logout() {
 
 /* ── PERFIL ── */
 const { profile, profileLoaded } = useProfile(currentUser)
+
+/* ── PLANO ── */
+const { isPro, podeAddPrazo, podeAddAudiencia, podeCompartilhar } = usePlan(profile)
 
 /* ── MODAL: Definir apelido (usuários sem apelido) ── */
 const mApelido = reactive({ open: false, valor: '', erro: '', saving: false })
@@ -112,6 +116,11 @@ function abrirModalPrazo(id = null) {
 
 async function salvarPrazo() {
   if (!mp.titulo.trim() || !mp.data) { alert('Preencha a descrição e a data limite.'); return }
+  if (!mp.editId && !podeAddPrazo(pendentes.value.length)) {
+    alert(`Você atingiu o limite de ${LIMITES_FREE.prazos} prazos pendentes do plano gratuito.\n\nAssine o plano Professional por R$ 25/mês para ter prazos ilimitados.`)
+    router.push('/planos')
+    return
+  }
   mp.saving = true
   try {
     if (mp.editId) {
@@ -210,6 +219,11 @@ async function salvarAudiencia() {
   if (!ma.titulo.trim() || !ma.data || !ma.hora) { alert('Preencha a descrição, data e horário.'); return }
   if (ma.online && !ma.link.trim()) { alert('Informe o link da audiência online.'); return }
   if (!ma.online && !ma.local.trim()) { alert('Informe o local da audiência.'); return }
+  if (!ma.editId && !podeAddAudiencia(proximas.value.length)) {
+    alert(`Você atingiu o limite de ${LIMITES_FREE.audiencias} audiências futuras do plano gratuito.\n\nAssine o plano Professional por R$ 25/mês para ter audiências ilimitadas.`)
+    router.push('/planos')
+    return
+  }
 
   ma.saving = true
   const obj = {
@@ -254,6 +268,11 @@ const ms = reactive({
 })
 
 function abrirModalCompartilhar(tipo, item) {
+  if (!podeCompartilhar()) {
+    alert('O compartilhamento está disponível apenas no plano Professional.\n\nAssine por R$ 25/mês e compartilhe seus prazos e audiências com sua equipe.')
+    router.push('/planos')
+    return
+  }
   ms.tipo = tipo
   ms.itemId = item.id
   ms.itemTitulo = item.titulo
@@ -331,9 +350,19 @@ async function removerShare(share) {
       </div>
       <div class="header-actions">
         <span class="user-email">{{ profile?.apelido ? '@' + profile.apelido : currentUser.email }}</span>
+        <span v-if="isPro" class="badge-pro">⭐ Pro</span>
+        <router-link v-else to="/planos" class="badge-free">Upgrade</router-link>
         <button @click="logout" class="btn-sair">Sair</button>
       </div>
     </header>
+
+    <!-- BANNER PLANO GRATUITO -->
+    <div v-if="profileLoaded && !isPro" class="plan-banner">
+      <span class="plan-banner-text">
+        ⭐ Plano Gratuito — prazos: {{ pendentes.length }}/{{ LIMITES_FREE.prazos }} · audiências: {{ proximas.length }}/{{ LIMITES_FREE.audiencias }}
+      </span>
+      <router-link to="/planos" class="plan-banner-btn">Assinar Professional — R$ 25/mês</router-link>
+    </div>
 
     <!-- iOS BANNER -->
     <div v-if="showIosBanner" class="ios-banner">

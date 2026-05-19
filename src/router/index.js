@@ -18,6 +18,11 @@ const routes = [
     meta: { requiresAuth: true },
   },
   {
+    // Página de planos e assinaturas — pública
+    path: '/planos',
+    component: () => import('../views/PlanosView.vue'),
+  },
+  {
     // handler customizado para ações de e-mail do Firebase (reset de senha, etc.)
     path: '/auth/action',
     component: () => import('../views/AuthActionView.vue'),

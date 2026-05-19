@@ -5,7 +5,7 @@ import {
   onAuthStateChanged, signOut, sendPasswordResetEmail,
 } from 'firebase/auth'
 import {
-  collection, doc, getDoc, addDoc, deleteDoc, setDoc,
+  collection, doc, getDoc, addDoc, deleteDoc, setDoc, updateDoc,
   query, orderBy, onSnapshot, where, getDocs, serverTimestamp,
 } from 'firebase/firestore'
 import { auth, db } from '../firebase'
@@ -29,6 +29,7 @@ onAuthStateChanged(auth, async user => {
     currentUser.value = user
     iniciarListaTokens()
     iniciarListaUsuarios()
+    iniciarListaAssinaturas()
   } catch {
     router.replace('/')
   }
@@ -194,11 +195,53 @@ async function revogarToken(id) {
 const disponiveis = t => t.filter(x => !x.used)
 const utilizados  = t => t.filter(x =>  x.used)
 
+/* ══════════════════════════════════════
+   GESTÃO DE PLANOS (Admin manual)
+══════════════════════════════════════ */
+const alterandoPlano = ref({}) // uid → true/false
+
+async function alterarPlano(user, novoPlan) {
+  if (!confirm(`Alterar plano de "${user.nome || user.email}" para "${novoPlan === 'pro' ? 'Professional' : 'Gratuito'}"?`)) return
+  alterandoPlano.value[user.id] = true
+  try {
+    const dados = novoPlan === 'pro'
+      ? { plan: 'pro', planStatus: 'active', planActivatedAt: serverTimestamp() }
+      : { plan: 'free', planStatus: 'cancelled', planCancelledAt: serverTimestamp() }
+    await updateDoc(doc(db, 'users', user.id), dados)
+  } catch (e) {
+    alert('Erro ao alterar plano: ' + e.message)
+  } finally {
+    delete alterandoPlano.value[user.id]
+  }
+}
+
+/* ══════════════════════════════════════
+   ABA ASSINATURAS
+══════════════════════════════════════ */
+const subscriptions = ref([])
+let unsubSubs = null
+
+function iniciarListaAssinaturas() {
+  unsubSubs = onSnapshot(
+    query(collection(db, 'subscriptions'), orderBy('processedAt', 'desc')),
+    snap => { subscriptions.value = snap.docs.map(d => ({ id: d.id, ...d.data() })) },
+    err => { console.error('Admin/subscriptions:', err.message) },
+  )
+}
+
+onUnmounted(() => {
+  if (unsubSubs) unsubSubs()
+})
+
 /* ── UTILITÁRIOS ── */
 function formatarData(timestamp) {
   if (!timestamp?.toDate) return '—'
   const d = timestamp.toDate()
   return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`
+}
+
+function labelPlano(plan) {
+  return plan === 'pro' ? 'Professional' : 'Gratuito'
 }
 </script>
 
@@ -226,6 +269,9 @@ function formatarData(timestamp) {
         <button :class="['admin-tab', abaAtiva === 'usuarios' && 'active']" @click="abaAtiva = 'usuarios'">
           👤 Usuários <span class="admin-tab-count">{{ users.length }}</span>
         </button>
+        <button :class="['admin-tab', abaAtiva === 'assinaturas' && 'active']" @click="abaAtiva = 'assinaturas'">
+          ⭐ Assinaturas <span class="admin-tab-count">{{ users.filter(u => u.plan === 'pro').length }}</span>
+        </button>
         <button :class="['admin-tab', abaAtiva === 'tokens' && 'active']" @click="abaAtiva = 'tokens'">
           🔑 Tokens <span class="admin-tab-count">{{ disponiveis(tokens).length }}</span>
         </button>
@@ -249,7 +295,12 @@ function formatarData(timestamp) {
 
         <div v-for="u in usuariosFiltrados" :key="u.id" class="user-card">
           <div class="user-info">
-            <div class="user-nome">{{ u.nome || '(sem nome)' }}</div>
+            <div class="user-nome">
+              {{ u.nome || '(sem nome)' }}
+              <span :class="['user-plan-badge', u.plan === 'pro' ? 'plan-pro' : 'plan-free']">
+                {{ u.plan === 'pro' ? '⭐ Pro' : 'Gratuito' }}
+              </span>
+            </div>
             <div class="user-meta">
               <span class="user-apelido">@{{ u.apelido || '—' }}</span>
               <span class="user-email">{{ u.email }}</span>
@@ -257,6 +308,24 @@ function formatarData(timestamp) {
             </div>
           </div>
           <div class="user-actions">
+            <button
+              v-if="u.plan !== 'pro'"
+              class="btn btn-sm btn-plan-ativar"
+              :disabled="alterandoPlano[u.id]"
+              @click="alterarPlano(u, 'pro')"
+              title="Ativar plano Pro manualmente"
+            >
+              {{ alterandoPlano[u.id] ? '...' : '⭐ Ativar Pro' }}
+            </button>
+            <button
+              v-else
+              class="btn btn-sm btn-outline-dark"
+              :disabled="alterandoPlano[u.id]"
+              @click="alterarPlano(u, 'free')"
+              title="Revogar plano Pro"
+            >
+              {{ alterandoPlano[u.id] ? '...' : '⬇ Revogar Pro' }}
+            </button>
             <button class="btn btn-sm btn-outline-dark" @click="abrirEditUser(u)" title="Editar dados">
               ✏️ Editar
             </button>
@@ -272,6 +341,48 @@ function formatarData(timestamp) {
               <template v-else-if="resetStatus[u.id] === 'sent'">✓ E-mail enviado</template>
               <template v-else>✗ Erro</template>
             </button>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- ══ ABA ASSINATURAS ══ -->
+      <div v-if="abaAtiva === 'assinaturas'" class="admin-card">
+
+        <div class="admin-card-header">
+          <h2>⭐ Assinaturas</h2>
+        </div>
+
+        <div class="subs-stats">
+          <div class="subs-stat">
+            <div class="subs-stat-num">{{ users.filter(u => u.plan === 'pro').length }}</div>
+            <div class="subs-stat-label">Usuários Pro</div>
+          </div>
+          <div class="subs-stat">
+            <div class="subs-stat-num">{{ users.filter(u => !u.plan || u.plan === 'free').length }}</div>
+            <div class="subs-stat-label">Usuários Gratuitos</div>
+          </div>
+          <div class="subs-stat">
+            <div class="subs-stat-num">{{ subscriptions.length }}</div>
+            <div class="subs-stat-label">Eventos Hotmart</div>
+          </div>
+        </div>
+
+        <div class="tokens-section-label">Histórico de eventos Hotmart</div>
+
+        <div v-if="subscriptions.length === 0" class="empty-state">
+          <div class="icon">📭</div>
+          <p>Nenhum evento Hotmart recebido ainda.</p>
+        </div>
+
+        <div v-for="s in subscriptions" :key="s.id" class="sub-card">
+          <div class="sub-event" :class="['event', s.event?.includes('APPROVED') || s.event?.includes('COMPLETE') ? 'event-ok' : 'event-cancel']">
+            {{ s.event || '—' }}
+          </div>
+          <div class="sub-info">
+            <span class="sub-email">{{ s.buyerEmail || '—' }}</span>
+            <span class="sub-meta">{{ formatarData(s.processedAt) }}</span>
+            <span v-if="s.transactionId" class="sub-tx">{{ s.transactionId }}</span>
           </div>
         </div>
 
