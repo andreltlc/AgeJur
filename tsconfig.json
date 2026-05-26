@@ -1,0 +1,21 @@
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "jsx": "preserve",
+    "lib": ["ESNext", "DOM"],
+    "baseUrl": ".",
+    "paths": { "@/*": ["src/*"] },
+
+    /* Migração gradual — arquivos .js continuam funcionando */
+    "allowJs": true,
+    "checkJs": false,
+
+    /* Vue */
+    "verbatimModuleSyntax": true
+  },
+  "include": ["src/**/*", "vite.config.ts"],
+  "exclude": ["node_modules", "dist"]
+}

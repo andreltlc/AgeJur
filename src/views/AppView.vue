@@ -1,30 +1,32 @@
 <script setup>
 import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { onAuthStateChanged, signOut } from 'firebase/auth'
-import { collection, query, where, getDocs, doc, updateDoc, setDoc } from 'firebase/firestore'
-import { auth, db } from '../firebase'
+import { collection, query, where, getDocs, doc, setDoc } from 'firebase/firestore'
+import { db } from '../firebase'
+import { useAuthStore } from '../stores/auth'
+import { useProfileStore } from '../stores/profile'
 import { usePrazos } from '../composables/usePrazos'
 import { useAudiencias } from '../composables/useAudiencias'
-import { useProfile } from '../composables/useProfile'
 import { buscarPorApelido, compartilharItem, removerCompartilhamento } from '../composables/useShare'
 import { todayStr, formatDate, urgencyLabel, urgencyClass, audienciaUrgencyLabel, audienciaUrgencyClass } from '../utils'
 
-const router = useRouter()
-const currentUser = ref(null)
+const router       = useRouter()
+const authStore    = useAuthStore()
+const profileStore = useProfileStore()
+
+/* currentUser e profile vêm das stores — zero listeners duplicados */
+const currentUser   = computed(() => authStore.currentUser)
+const profile       = computed(() => profileStore.profile)
+const profileLoaded = computed(() => profileStore.profileLoaded)
 
 /* ── AUTH ── */
-onAuthStateChanged(auth, user => {
-  if (!user) { router.replace('/login'); return }
-  currentUser.value = user
-})
+watch(currentUser, user => {
+  if (!user) router.replace('/login')
+}, { immediate: true })
 
 function logout() {
-  signOut(auth).then(() => router.replace('/login'))
+  authStore.logout().then(() => router.replace('/login'))
 }
-
-/* ── PERFIL ── */
-const { profile, profileLoaded } = useProfile(currentUser)
 
 /* ── MODAL: Definir apelido (usuários sem apelido) ── */
 const mApelido = reactive({ open: false, valor: '', erro: '', saving: false })

@@ -1,6 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import { auth } from '../firebase'
-import { onAuthStateChanged } from 'firebase/auth'
+import { useAuthStore } from '../stores/auth'
 
 const routes = [
   {
@@ -34,19 +33,21 @@ const router = createRouter({
   routes,
 })
 
-function getCurrentUser() {
-  return new Promise(resolve => {
-    const unsub = onAuthStateChanged(auth, user => {
-      unsub()
-      resolve(user)
-    })
-  })
-}
-
 router.beforeEach(async to => {
-  const user = await getCurrentUser()
+  const authStore = useAuthStore()
+
+  /* Aguarda o Firebase resolver o estado inicial de auth (sem criar novo listener) */
+  if (!authStore.authReady) {
+    await new Promise(resolve => {
+      const stop = setInterval(() => {
+        if (authStore.authReady) { clearInterval(stop); resolve(undefined) }
+      }, 20)
+    })
+  }
+
+  const user = authStore.currentUser
   if (to.meta.requiresAuth && !user) return '/login'
-  if (to.path === '/login' && user) return '/'
+  if (to.path === '/login' && user)  return '/'
 })
 
 export default router

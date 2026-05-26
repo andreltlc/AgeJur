@@ -1,46 +1,47 @@
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import {
-  onAuthStateChanged, signOut, sendPasswordResetEmail,
-} from 'firebase/auth'
+import { sendPasswordResetEmail } from 'firebase/auth'
 import {
   collection, doc, getDoc, addDoc, deleteDoc, setDoc,
   query, orderBy, onSnapshot, where, getDocs, serverTimestamp,
 } from 'firebase/firestore'
 import { auth, db } from '../firebase'
+import { useAuthStore } from '../stores/auth'
 import '../assets/admin.css'
 
-const router = useRouter()
-const currentUser = ref(null)
-const abaAtiva = ref('usuarios')
+const router    = useRouter()
+const authStore = useAuthStore()
 
-/* ── AUTH GUARD ── */
+/* currentUser vem da store — sem novo listener */
+const currentUser = computed(() => authStore.currentUser)
+const abaAtiva    = ref('usuarios')
+
+/* ── ADMIN GUARD ── */
 let unsubTokens = null
-let unsubUsers = null
+let unsubUsers  = null
 
-onAuthStateChanged(auth, async user => {
+watch(currentUser, async user => {
   if (!user) { router.replace('/login'); return }
   try {
     const configDoc = await getDoc(doc(db, 'config', 'admin'))
     if (!configDoc.exists() || configDoc.data().uid !== user.uid) {
       router.replace('/'); return
     }
-    currentUser.value = user
     iniciarListaTokens()
     iniciarListaUsuarios()
   } catch {
     router.replace('/')
   }
-})
+}, { immediate: true })
 
 onUnmounted(() => {
   if (unsubTokens) unsubTokens()
-  if (unsubUsers) unsubUsers()
+  if (unsubUsers)  unsubUsers()
 })
 
 function logout() {
-  signOut(auth).then(() => router.replace('/login'))
+  authStore.logout().then(() => router.replace('/login'))
 }
 
 /* ══════════════════════════════════════
