@@ -9,7 +9,7 @@ import { useAudiencias } from '../composables/useAudiencias'
 import { useProfile } from '../composables/useProfile'
 import { buscarPorApelido, compartilharItem, removerCompartilhamento } from '../composables/useShare'
 import { todayStr, formatDate, urgencyLabel, urgencyClass, audienciaUrgencyLabel, audienciaUrgencyClass } from '../utils'
-import { initNotifications } from '../composables/useNotifications'
+import { initNotifications, ativarNotificacoes, notificationPermission } from '../composables/useNotifications'
 
 const router = useRouter()
 const currentUser = ref(null)
@@ -57,6 +57,17 @@ async function salvarApelido() {
   } finally {
     mApelido.saving = false
   }
+}
+
+/* ── NOTIFICAÇÕES ── */
+const notifStatus = ref(notificationPermission())
+const notifMsg = ref('')
+
+async function handleAtivarNotificacoes() {
+  const result = await ativarNotificacoes(currentUser.value.uid)
+  notifStatus.value = notificationPermission()
+  notifMsg.value = result.msg
+  setTimeout(() => { notifMsg.value = '' }, 4000)
 }
 
 /* ── iOS BANNER ── */
@@ -333,9 +344,17 @@ async function removerShare(share) {
       </div>
       <div class="header-actions">
         <span class="user-email">{{ profile?.apelido ? '@' + profile.apelido : currentUser.email }}</span>
+        <button
+          v-if="notifStatus !== 'granted' && notifStatus !== 'unsupported' && notifStatus !== 'denied'"
+          @click="handleAtivarNotificacoes"
+          class="btn-notif"
+          title="Ativar notificações"
+        >🔔 Ativar notificações</button>
+        <span v-if="notifStatus === 'granted'" class="notif-ativa" title="Notificações ativas">🔔</span>
         <button @click="logout" class="btn-sair">Sair</button>
       </div>
     </header>
+    <div v-if="notifMsg" class="notif-toast">{{ notifMsg }}</div>
 
     <!-- iOS BANNER -->
     <div v-if="showIosBanner" class="ios-banner">
