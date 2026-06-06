@@ -89,19 +89,30 @@ header .subtitle {
 }
 .btn-sair:hover { background: rgba(255, 255, 255, 0.25); }
 
-.btn-notif {
-    padding: 0.35rem 0.8rem;
-    background: rgba(255, 255, 255, 0.15);
-    border: 1px solid rgba(255, 255, 255, 0.3);
-    border-radius: 6px;
-    color: white;
-    font-size: 0.8rem;
-    cursor: pointer;
-    transition: background 0.2s;
-    font-family: inherit;
+.notif-banner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    background: #fff8e1;
+    border-bottom: 2px solid var(--secondary);
+    padding: 0.75rem 1.5rem;
+    font-size: 0.9rem;
+    color: var(--text);
 }
-.btn-notif:hover { background: rgba(255, 255, 255, 0.25); }
-.notif-ativa { font-size: 1.1rem; cursor: default; }
+.notif-banner-btn {
+    padding: 0.4rem 1rem;
+    background: var(--secondary);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    font-family: inherit;
+    cursor: pointer;
+    white-space: nowrap;
+    font-weight: 600;
+}
+.notif-banner-btn:hover { background: var(--secondary-dark); }
 .notif-toast {
     position: fixed;
     bottom: 1.5rem;

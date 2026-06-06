@@ -64,10 +64,17 @@ const notifStatus = ref(notificationPermission())
 const notifMsg = ref('')
 
 async function handleAtivarNotificacoes() {
-  const result = await ativarNotificacoes(currentUser.value.uid)
-  notifStatus.value = notificationPermission()
-  notifMsg.value = result.msg
-  setTimeout(() => { notifMsg.value = '' }, 4000)
+  if (!currentUser.value) return
+  try {
+    const result = await ativarNotificacoes(currentUser.value.uid)
+    notifStatus.value = notificationPermission()
+    notifMsg.value = result.msg
+    setTimeout(() => { notifMsg.value = '' }, 4000)
+  } catch (e) {
+    console.error('Erro ao ativar notificações:', e)
+    notifMsg.value = 'Erro ao ativar notificações.'
+    setTimeout(() => { notifMsg.value = '' }, 4000)
+  }
 }
 
 /* ── iOS BANNER ── */
@@ -344,16 +351,15 @@ async function removerShare(share) {
       </div>
       <div class="header-actions">
         <span class="user-email">{{ profile?.apelido ? '@' + profile.apelido : currentUser.email }}</span>
-        <button
-          v-if="notifStatus !== 'granted' && notifStatus !== 'unsupported' && notifStatus !== 'denied'"
-          @click="handleAtivarNotificacoes"
-          class="btn-notif"
-          title="Ativar notificações"
-        >🔔 Ativar notificações</button>
-        <span v-if="notifStatus === 'granted'" class="notif-ativa" title="Notificações ativas">🔔</span>
         <button @click="logout" class="btn-sair">Sair</button>
       </div>
     </header>
+
+    <!-- BANNER NOTIFICAÇÕES -->
+    <div v-if="notifStatus === 'default'" class="notif-banner">
+      <span>🔔 Ative as notificações para ser avisado sobre prazos e audiências</span>
+      <button @click="handleAtivarNotificacoes" class="notif-banner-btn">Ativar</button>
+    </div>
     <div v-if="notifMsg" class="notif-toast">{{ notifMsg }}</div>
 
     <!-- iOS BANNER -->
