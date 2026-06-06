@@ -78,25 +78,31 @@ exports.notificarPrazosDiario = onSchedule(
 )
 
 // Notifica quando um prazo é compartilhado
-exports.notificarCompartilhamentoPrazo = onDocumentUpdated('prazos/{id}', async event => {
-  const before = event.data.before.data()
-  const after = event.data.after.data()
-  const novos = (after.sharedWithUids || []).filter(uid => !(before.sharedWithUids || []).includes(uid))
-  if (novos.length === 0) return
-  await notificarUsuarios(novos, {
-    title: '📨 Prazo compartilhado com você',
-    body: `@${after.ownerApelido} compartilhou "${after.titulo}"`,
-  })
-})
+exports.notificarCompartilhamentoPrazo = onDocumentUpdated(
+  { document: 'prazos/{id}', region: 'us-central1' },
+  async event => {
+    const before = event.data.before.data()
+    const after = event.data.after.data()
+    const novos = (after.sharedWithUids || []).filter(uid => !(before.sharedWithUids || []).includes(uid))
+    if (novos.length === 0) return
+    await notificarUsuarios(novos, {
+      title: '📨 Prazo compartilhado com você',
+      body: `@${after.ownerApelido} compartilhou "${after.titulo}"`,
+    })
+  }
+)
 
 // Notifica quando uma audiência é compartilhada
-exports.notificarCompartilhamentoAudiencia = onDocumentUpdated('audiencias/{id}', async event => {
-  const before = event.data.before.data()
-  const after = event.data.after.data()
-  const novos = (after.sharedWithUids || []).filter(uid => !(before.sharedWithUids || []).includes(uid))
-  if (novos.length === 0) return
-  await notificarUsuarios(novos, {
-    title: '📨 Audiência compartilhada com você',
-    body: `@${after.ownerApelido} compartilhou "${after.titulo}"`,
-  })
-})
+exports.notificarCompartilhamentoAudiencia = onDocumentUpdated(
+  { document: 'audiencias/{id}', region: 'us-central1' },
+  async event => {
+    const before = event.data.before.data()
+    const after = event.data.after.data()
+    const novos = (after.sharedWithUids || []).filter(uid => !(before.sharedWithUids || []).includes(uid))
+    if (novos.length === 0) return
+    await notificarUsuarios(novos, {
+      title: '📨 Audiência compartilhada com você',
+      body: `@${after.ownerApelido} compartilhou "${after.titulo}"`,
+    })
+  }
+)
