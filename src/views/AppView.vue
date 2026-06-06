@@ -9,6 +9,7 @@ import { useAudiencias } from '../composables/useAudiencias'
 import { useProfile } from '../composables/useProfile'
 import { buscarPorApelido, compartilharItem, removerCompartilhamento } from '../composables/useShare'
 import { todayStr, formatDate, urgencyLabel, urgencyClass, audienciaUrgencyLabel, audienciaUrgencyClass } from '../utils'
+import { initNotifications } from '../composables/useNotifications'
 
 const router = useRouter()
 const currentUser = ref(null)
@@ -17,6 +18,7 @@ const currentUser = ref(null)
 onAuthStateChanged(auth, user => {
   if (!user) { router.replace('/login'); return }
   currentUser.value = user
+  initNotifications(user.uid)
 })
 
 function logout() {
