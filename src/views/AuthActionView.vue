@@ -80,7 +80,7 @@ async function redefinirSenha() {
   <div class="auth-page">
     <div class="auth-card">
       <div class="auth-logo">
-        <span class="auth-icon">⚖️</span>
+        <img src="/icons/icon-192.png" class="auth-icon" alt="Agenda Jurídica" />
         <h1>Agenda Jurídica</h1>
       </div>
 

@@ -324,7 +324,7 @@ async function removerShare(share) {
 
     <!-- HEADER -->
     <header>
-      <span class="header-icon">⚖️</span>
+      <img src="/icons/shield.png" class="header-icon" alt="Agenda Jurídica" />
       <div class="header-info">
         <h1>Agenda Jurídica</h1>
         <div class="subtitle">Controle de prazos e audiências</div>

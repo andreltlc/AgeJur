@@ -26,6 +26,8 @@
 
 .admin-header-left strong { font-size: 1rem; }
 
+.admin-header-icon { height: 48px; width: auto; display: block; }
+
 .admin-header-actions {
     display: flex;
     gap: 0.5rem;

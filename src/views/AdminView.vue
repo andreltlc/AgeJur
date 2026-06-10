@@ -207,7 +207,7 @@ function formatarData(timestamp) {
 
     <header class="admin-header">
       <div class="admin-header-left">
-        <span>⚖️</span>
+        <img src="/icons/shield.png" class="admin-header-icon" alt="Agenda Jurídica" />
         <div>
           <strong>Agenda Jurídica</strong>
           <span class="admin-badge">Admin</span>
