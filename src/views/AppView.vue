@@ -31,8 +31,8 @@ const { profile, profileLoaded } = useProfile(currentUser)
 /* ── MODAL: Definir apelido (usuários sem apelido) ── */
 const mApelido = reactive({ open: false, valor: '', erro: '', saving: false })
 
-watch(profileLoaded, loaded => {
-  if (loaded && !profile.value?.apelido) mApelido.open = true
+watch([profileLoaded, () => profile.value?.apelido], ([loaded, apelido]) => {
+  mApelido.open = loaded && !apelido
 }, { immediate: true })
 
 function onModalApelidoInput(e) {
