@@ -22,8 +22,10 @@ onMounted(() => {
   if (isIOS && !window.navigator.standalone) showIosBanner.value = true
 })
 
+let registrando = false
+
 onAuthStateChanged(auth, user => {
-  if (user) router.replace('/')
+  if (user && !registrando) router.replace('/')
 })
 
 /* ── LOGIN ── */
@@ -72,20 +74,34 @@ async function criarConta() {
   if (regSenha.value !== regSenha2.value) { regErro.value = 'As senhas não coincidem.'; return }
 
   regLoading.value = true
+  registrando = true
+  let cred = null
   try {
-    const snap = await getDocs(query(collection(db, 'users'), where('apelido', '==', apelido)))
-    if (!snap.empty) { regErro.value = 'Este apelido já está em uso. Escolha outro.'; return }
+    // A checagem de unicidade do apelido só pode ler `users` autenticado
+    // (regra do Firestore), por isso a conta é criada antes de checar.
+    cred = await createUserWithEmailAndPassword(auth, regEmail.value.trim(), regSenha.value)
 
-    const cred = await createUserWithEmailAndPassword(auth, regEmail.value.trim(), regSenha.value)
+    const snap = await getDocs(query(collection(db, 'users'), where('apelido', '==', apelido)))
+    if (!snap.empty) {
+      await cred.user.delete()
+      regErro.value = 'Este apelido já está em uso. Escolha outro.'
+      return
+    }
+
     await setDoc(doc(db, 'users', cred.user.uid), {
       email: regEmail.value.trim(),
       nome: regNome.value.trim(),
       apelido,
       createdAt: serverTimestamp(),
     })
+
+    router.replace('/')
   } catch (e) {
+    if (cred) { try { await cred.user.delete() } catch { /* ignore */ } }
     regErro.value = traduzirErro(e.code)
+  } finally {
     regLoading.value = false
+    registrando = false
   }
 }
 
